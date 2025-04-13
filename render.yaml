@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: illuminati
+    env: python
+    buildCommand: |
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+      python manage.py migrate
+    startCommand: gunicorn login_2.wsgi:application
+    staticPublishPath: staticfiles
+    envVars:
+      - key: DEBUG
+        value: 'False'
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        value: illuminati.onrender.com

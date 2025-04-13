@@ -1,0 +1,225 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta property="og:title" content="Illuminati">
+<meta property="og:image" content="{% static 'images/favicon.png' %}">
+<meta property="og:description" content="Study">
+
+  <title>Illuminati Coaching Centre</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.css" rel="stylesheet" />
+  <link rel="icon" href="{% static 'images/favicon.ico' %}" type="image/x-icon">
+  
+  <style>
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-15px); }
+    }
+    .atom-float {
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes gradient-x {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .animate-gradient-x {
+      background-size: 200% 200%;
+      animation: gradient-x 10s ease infinite;
+    }
+  </style>
+
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+  <!-- Navbar -->
+  <!-- <nav class="bg-blue-800 text-white py-4 px-6 flex justify-between items-center sticky top-0 shadow-md z-50">
+    <div class="text-2xl font-bold">Illuminati</div>
+    <div id="mobile-menu" class="hidden flex-col gap-4 mt-4 md:flex md:flex-row md:mt-0 md:gap-6">
+      <a href="#home" class="hover:text-yellow-400">Home</a>
+      <a href="#about" class="hover:text-yellow-400">About</a>
+      <a href="#features" class="hover:text-yellow-400">Features</a>
+      <a href="#join" class="hover:text-yellow-400">Join</a>
+      <a href="#contact" class="hover:text-yellow-400">Contact</a>
+    </div>
+    <button class="md:hidden text-2xl" onclick="toggleMenu()">&#9776;</button>
+  </nav> -->
+
+
+  <nav class="bg-blue-800 border-gray-200">
+    <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
+      <a href="/" class="flex items-center space-x-3 rtl:space-x-reverse">
+        <img src="{% static 'images/logo2.png' %}" class="h-8" alt="Illuminati Logo" />
+        <span class="self-center text-2xl font-semibold whitespace-nowrap text-white">Illuminati</span>
+      </a>
+      <button data-collapse-toggle="navbar-default" type="button" class="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-white rounded-lg md:hidden hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500" aria-controls="navbar-default" aria-expanded="false">
+        <span class="sr-only">Open main menu</span>
+        <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 17 14">
+          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 1h15M1 7h15M1 13h15" />
+        </svg>
+      </button>
+      <div class="hidden w-full md:block md:w-auto" id="navbar-default">
+        <ul class="font-medium flex flex-col p-4 md:p-0 mt-4 border border-blue-700 rounded-lg bg-blue-700 md:flex-row md:space-x-8 rtl:space-x-reverse md:mt-0 md:border-0 md:bg-blue-800">
+          <li>
+            <a href="#home" class="block py-2 px-3 text-white bg-blue-900 rounded md:bg-transparent md:text-white md:hover:text-yellow-300 md:p-0" aria-current="page">Home</a>
+          </li>
+          <li>
+            <a href="#about" class="block py-2 px-3 text-white rounded hover:bg-blue-700 md:hover:bg-transparent md:border-0 md:hover:text-yellow-300 md:p-0">About</a>
+          </li>
+          <li>
+            <a href="#features" class="block py-2 px-3 text-white rounded hover:bg-blue-700 md:hover:bg-transparent md:border-0 md:hover:text-yellow-300 md:p-0">Features</a>
+          </li>
+          <li>
+            <a href="#join" class="block py-2 px-3 text-white rounded hover:bg-blue-700 md:hover:bg-transparent md:border-0 md:hover:text-yellow-300 md:p-0">Join</a>
+          </li>
+          <li>
+            <a href="#contact" class="block py-2 px-3 text-white rounded hover:bg-blue-700 md:hover:bg-transparent md:border-0 md:hover:text-yellow-300 md:p-0">Contact</a>
+          </li>
+          <li>
+            <a href="/admin-auth/dashboard/" class="block py-2 px-3 text-white rounded hover:bg-blue-700 md:hover:bg-transparent md:border-0 md:hover:text-yellow-300 md:p-0">Admin</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+  <!-- Hero Section -->
+<header id="home" class="relative h-screen flex items-center justify-center text-center text-white bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?auto=format&fit=crop&w=1500&q=80');">
+    <div class="absolute inset-0 bg-gradient-to-br from-blue-900 via-black to-purple-800 opacity-80 backdrop-blur-sm"></div>
+    <canvas id="particles" class="absolute inset-0 z-0"></canvas>
+    <div class="relative z-10 max-w-2xl px-6">
+      <img src="https://img.icons8.com/ios-filled/100/ffffff/atom-editor.png" class="mx-auto mb-4 atom-float w-16 h-16" alt="Atom Icon"/>
+      <h1 class="text-4xl font-bold">Illuminati: Science Simplified</h1>
+      <p class="text-lg mt-2">Classes VI-XII | CBSE / ICSE / WBBSE (English Medium)</p>
+      <p class="mt-2">Subjects Covered: Physics, Chemistry & Biology</p>
+      <a href="#join" class="mt-4 inline-block bg-yellow-600 hover:bg-yellow-500 text-white py-2 px-6 rounded-md text-lg font-bold">Join Now</a>
+    </div>
+  </header>
+<br>
+
+  <!-- About Section -->
+  <section id="about" class="py-16 px-6 bg-white text-center">
+    <h2 class="text-3xl font-bold text-blue-800">About Our Coaching Centre</h2>
+    <p class="mt-4 text-lg">At Illuminati Coaching Centre, we simplify science for students from Class VI to XII across CBSE, ICSE, and WBBSE boards. Our mission is to provide in-depth knowledge with modern teaching techniques, ensuring our students excel in Physics, Chemistry, and Biology.</p>
+    <p class="mt-2 font-semibold text-blue-700">Instructor: Kapui Sir (Sourav Gangopadhyay)</p>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="py-16 bg-gray-100 text-center">
+    <h2 class="text-3xl font-bold text-blue-800">Why Choose Us?</h2>
+    <div class="mt-8 grid md:grid-cols-3 gap-8 px-6">
+      <div class="bg-white p-6 shadow-lg rounded-lg">
+        <h3 class="text-xl font-bold text-blue-700">Audio-Visual Classes</h3>
+        <p class="mt-2">Engaging lessons through interactive videos and presentations.</p>
+      </div>
+      <div class="bg-white p-6 shadow-lg rounded-lg">
+        <h3 class="text-xl font-bold text-blue-700">Mock Tests</h3>
+        <p class="mt-2">Regular mock tests to track progress and improve exam readiness.</p>
+      </div>
+      <div class="bg-white p-6 shadow-lg rounded-lg">
+        <h3 class="text-xl font-bold text-blue-700">English Speaking Environment</h3>
+        <p class="mt-2">Enhance communication skills while mastering science.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Join Now Section -->
+  <section id="join" class="py-16 bg-yellow-100 text-center">
+    <h2 class="text-3xl font-bold text-yellow-800 mb-4">Ready to Join the Illuminati Family?</h2>
+    <p class="text-lg mb-6">Embark on your journey to master science with us. Limited seats available!</p>
+    <a href="/dashboard" class="inline-block bg-blue-700 hover:bg-blue-800 text-white py-3 px-8 rounded-full text-lg font-bold shadow-lg transition duration-300">Enroll Now</a>
+  </section>
+
+  <!-- Contact Section -->
+  <section id="contact" class="py-16 bg-white text-center">
+    <h2 class="text-3xl font-bold text-blue-800">Contact Us</h2>
+    <p class="mt-4 text-lg">For Admissions and Inquiries:</p>
+    <p class="mt-2 font-bold"><a href="tel:+918001647007" class="text-blue-700 hover:underline">8001647007</a></p>
+    <p class="mt-2 font-semibold text-blue-700">Instructor: Kapui Sir</p>
+  </section>
+
+  <!-- Developer Credit -->
+  <footer class="bg-gray-900 text-white text-center py-10">
+    <div class="max-w-4xl mx-auto px-4">
+      <h3 class="text-2xl font-extrabold text-yellow-400">Crafted with Passion</h3>
+      <p class="mt-4 text-xl">This entire website — from concept to code — has been envisioned, designed, and developed by</p>
+      <p class="mt-2 text-3xl font-bold text-white">Sundarlala Pal</p>
+      <p class="text-base italic text-gray-300">(Frontend Ninja, Backend Beast, Full Stack Wizard & Future Iron Man 🦾)</p>
+      <div class="mt-6">
+        <p class="text-lg">Want a custom website, app, or digital solution for your business or idea?</p>
+        <p class="text-lg font-semibold mt-1">I build everything from scratch, tailored to your vision!</p>
+      </div>
+      <p class="mt-4 text-lg">Reach out to me directly:</p>
+      <p class="mt-2">
+        <a href="https://wa.me/918001647007" class="text-green-400 hover:underline">WhatsApp</a> |
+        <a href="https://www.instagram.com/ig_sundar_pal" class="text-pink-400 hover:underline">Instagram</a> |
+        <a href="mailto:sundarlalofficial@gmail.com" class="text-blue-400 hover:underline">Gmail</a>
+      </p>
+      <p class="mt-6 text-sm text-gray-400">&copy; 2025 Illuminati Coaching Centre. All Rights Reserved.</p>
+    </div>
+  </footer>
+
+  <!-- Responsive Menu Toggle Script -->
+  <script>
+    function toggleMenu() {
+      const menu = document.getElementById('mobile-menu');
+      menu.classList.toggle('hidden');
+    }
+   
+   
+  const canvas = document.getElementById("particles");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const particlesArray = [];
+    class Particle {
+      constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.size = Math.random() * 2 + 1;
+        this.speedX = Math.random() * 0.5 - 0.25;
+        this.speedY = Math.random() * 0.5 - 0.25;
+      }
+      update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+          this.x = Math.random() * canvas.width;
+          this.y = Math.random() * canvas.height;
+        }
+      }
+      draw() {
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function initParticles() {
+      for (let i = 0; i < 100; i++) {
+        particlesArray.push(new Particle());
+      }
+    }
+    function animateParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < particlesArray.length; i++) {
+        particlesArray[i].update();
+        particlesArray[i].draw();
+      }
+      requestAnimationFrame(animateParticles);
+    }
+    initParticles();
+    animateParticles();
+
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+</script>
+
+</body>
+</html>

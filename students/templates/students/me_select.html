@@ -1,0 +1,76 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Illuminati">
+<meta property="og:image" content="{% static 'images/favicon.png' %}">
+<meta property="og:description" content="Study">
+    <title>PDFS</title>
+    <link rel="icon" href="{% static 'images/favicon.ico' %}" type="image/x-icon">
+    <script>
+
+
+        function sendpdfData(allow, namee) {
+            const data = {
+                "open_ok": allow,
+                "name__": namee,
+            };
+
+            fetch(window.location.href, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": document.getElementById("csrf_token").value
+                },
+                body: JSON.stringify(data)
+            })
+                .then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;  // This will follow the redirect
+                    } else {
+                        // Optional fallback: handle other cases
+                        return response.json();
+                    }
+                })
+                .then(data => {
+                    if (data && data.message) {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => console.error("Error:", error));
+            }
+    </script>
+</head>
+
+<body>
+    <input type="hidden" id="csrf_token" value="{{ csrf_token }}">
+
+    <table border="1">
+        <thead>
+            <tr>
+                <th>PDF Names</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pdf in pdfs %}
+            <tr>
+                <td>{{ pdf.name }}</td>
+                <td>
+                    <button onclick="sendpdfData('True','{{ pdf.name|escapejs }}')">Open</button>
+                </td>
+            </tr>
+            {% empty %}
+            <td>No pdfs found</td>
+            <td>No Action</td>
+            {% endfor %}
+        </tbody>
+    </table>
+
+
+</body>
+
+</html>

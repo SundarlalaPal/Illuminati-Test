@@ -1,0 +1,99 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Illuminati">
+<meta property="og:image" content="{% static 'images/favicon.png' %}">
+<meta property="og:description" content="Study">
+    <title>Signup Users List</title>
+    <link rel="icon" href="{% static 'images/favicon.ico' %}" type="image/x-icon">
+    <script>
+        function sendUserData(user_id, first_name, last_name, email, password, phone_number, age, user_class, guardian_name,board, allow) {
+            const data = {
+                "user_id": user_id,
+                "First_Name": first_name,
+                "Last_Name": last_name,
+                "email": email,
+                "Password": password,
+                "Phone_Number": phone_number,
+                "Age": age,
+                "Class": user_class,
+                "Guardian_Name": guardian_name,
+                "Board": board,
+                "Allow": allow
+            };
+
+            fetch(window.location.href, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": document.getElementById("csrf_token").value
+                },
+                body: JSON.stringify(data)
+            })
+                .then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;  // This will follow the redirect
+                    } else {
+                        // Optional fallback: handle other cases
+                        return response.json();
+                    }
+                })
+                .then(data => {
+                    if (data && data.message) {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => console.error("Error:", error));
+        }
+    </script>
+</head>
+<body>
+    <h2>Signup Users List</h2>
+
+    <!-- CSRF Token -->
+    <input type="hidden" id="csrf_token" value="{{ csrf_token }}">
+
+    <table border="1">
+        <thead>
+            <tr>
+                <th>User ID</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Email</th>
+                <th>Password</th>
+                <th>Phone Number</th>
+                <th>Age</th>
+                <th>Class</th>
+                <th>Guardian Name</th>
+                <th>Board</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.user_id }}</td>
+                <td>{{ user.First_Name }}</td>
+                <td>{{ user.Last_Name }}</td>
+                <td>{{ user.email }}</td>
+                <td>{{ user.Password }}</td>
+                <td>{{ user.Phone_Number }}</td>
+                <td>{{ user.Age }}</td>
+                <td>{{ user.Class }}</td>
+                <td>{{ user.Guardian_Name }}</td>
+                <td>{{ user.Board }}</td>
+                <td>
+                    <button onclick="sendUserData('{{ user.user_id|escapejs }}', '{{ user.First_Name|escapejs }}', '{{ user.Last_Name|escapejs }}', '{{ user.email|escapejs }}', '{{ user.Password|escapejs }}', '{{ user.Phone_Number|escapejs }}', '{{ user.Age|escapejs }}', '{{ user.Class|escapejs }}', '{{ user.Guardian_Name|escapejs }}','{{ user.Board|escapejs }}', 'True')">Allow</button>
+
+                    <button onclick="sendUserData('{{ user.user_id|escapejs }}', '{{ user.First_Name|escapejs }}', '{{ user.Last_Name|escapejs }}', '{{ user.email|escapejs }}', '{{ user.Password|escapejs }}', '{{ user.Phone_Number|escapejs }}', '{{ user.Age|escapejs }}', '{{ user.Class|escapejs }}', '{{ user.Guardian_Name|escapejs }}','{{ user.Board|escapejs }}', 'False')">Deny</button>
+
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

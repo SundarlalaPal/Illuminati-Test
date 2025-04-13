@@ -1,0 +1,146 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Illuminati">
+<meta property="og:image" content="{% static 'images/favicon.png' %}">
+<meta property="og:description" content="Study">
+    <title>PDF Viewer</title>
+    <link rel="icon" href="{% static 'images/favicon.ico' %}" type="image/x-icon">
+
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
+    <style>
+        /* Custom Styles */
+        body { font-family: 'Inter', sans-serif; background-color: #f9fafb; }
+        .pdf-container { max-width: 800px; margin: auto; }
+        .controls button { transition: 0.2s ease-in-out; }
+        .controls button:hover { transform: scale(1.1); }
+        canvas { border-radius: 8px; box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2); }
+    </style>
+</head>
+<body class="text-gray-900 dark:bg-gray-900 dark:text-gray-200">
+
+    <div class="pdf-container p-5">
+        <h2 class="text-3xl font-semibold text-center mb-5">📄 PDF Viewer</h2>
+
+        <!-- Controls -->
+        <div class="controls flex flex-wrap justify-center gap-3 mb-4">
+            <button onclick="prevPage()" class="bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600">
+                ⏮ Prev
+            </button>
+
+            <div class="flex items-center bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-lg shadow-md">
+                <input type="number" id="page-num" value="1" min="1"
+                    class="w-12 text-center bg-transparent focus:outline-none dark:text-white">
+                <span id="page-info" class="ml-2">/ 0</span>
+            </div>
+
+            <button onclick="nextPage()" class="bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600">
+                Next ⏭
+            </button>
+
+            <button onclick="zoomIn()" class="bg-green-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-600">
+                🔍➕ Zoom In
+            </button>
+            <button onclick="zoomOut()" class="bg-red-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-red-600">
+                🔍➖ Zoom Out
+            </button>
+        </div>
+
+        <!-- PDF Canvas -->
+        <div class="flex justify-center">
+            <canvas id="pdf-render" class="bg-white shadow-lg rounded-lg"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let pdfDoc = null,
+            pageNum = 1,
+            scale = 1.5,  // Default zoom level
+            canvas = document.getElementById('pdf-render'),
+            ctx = canvas.getContext('2d');
+
+        // Get base64 PDF data from Django
+        let pdfData = "{{ pdf_content|safe }}"; 
+        let pdfUrl = "data:application/pdf;base64," + pdfData; // Convert to data URL
+
+        // Load PDF using PDF.js
+        pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
+            pdfDoc = pdf;
+            document.getElementById('page-info').textContent = `/ ${pdf.numPages}`;
+            renderPage(pageNum);
+        });
+
+        // Render the given page
+        function renderPage(num) {
+            pdfDoc.getPage(num).then(page => {
+                let viewport = page.getViewport({ scale });
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                let renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+                page.render(renderContext);
+
+                document.getElementById('page-num').value = num;
+            });
+        }
+
+        // Go to previous page
+        function prevPage() {
+            if (pageNum <= 1) return;
+            pageNum--;
+            renderPage(pageNum);
+        }
+
+        // Go to next page
+        function nextPage() {
+            if (pageNum >= pdfDoc.numPages) return;
+            pageNum++;
+            renderPage(pageNum);
+        }
+
+        // Zoom in
+        function zoomIn() {
+            scale += 0.2;
+            renderPage(pageNum);
+        }
+
+        // Zoom out
+        function zoomOut() {
+            if (scale > 0.5) {
+                scale -= 0.2;
+                renderPage(pageNum);
+            }
+        }
+
+        // Jump to a specific page
+        function goToPage(num) {
+            let page = parseInt(num);
+            if (page >= 1 && page <= pdfDoc.numPages) {
+                pageNum = page;
+                renderPage(pageNum);
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener("keydown", function(event) {
+            if (event.key === "ArrowRight") nextPage();
+            if (event.key === "ArrowLeft") prevPage();
+            if (event.key === "+") zoomIn();
+            if (event.key === "-") zoomOut();
+        });
+
+    </script>
+
+</body>
+</html>

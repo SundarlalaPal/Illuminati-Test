@@ -1,0 +1,39 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta property="og:title" content="Illuminati">
+<meta property="og:image" content="{% static 'images/favicon.png' %}">
+<meta property="og:description" content="Study">
+    <title>Upload PDF by Class</title>
+    <link rel="icon" href="{% static 'images/favicon.ico' %}" type="image/x-icon">
+</head>
+<body>
+    {% if message %}
+        <p style="color: green;">{{ message }}</p>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <label for="class">Select Class:</label>
+        <select name="class" id="class" required>
+            <option value="">--Select--</option>
+            <option value="5">Class 5</option>
+            <option value="6">Class 6</option>
+            <option value="7">Class 7</option>
+            <option value="8">Class 8</option>
+            <option value="9">Class 9</option>
+            <option value="10">Class 10</option>
+            <option value="11">Class 11</option>
+            <option value="12">Class 12</option>
+        </select>
+        <br><br>
+
+        <label for="pdf_file">Choose PDF:</label>
+        <input type="file" name="pdf_file" accept="application/pdf" required>
+        <br><br>
+
+        <button type="submit">Upload</button>
+    </form>
+</body>
+</html>

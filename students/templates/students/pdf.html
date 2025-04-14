@@ -3,176 +3,196 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta property="og:title" content="Illuminati" />
-  <meta property="og:image" content="{% static 'images/favicon.png' %}" />
-  <meta property="og:description" content="Study Materials Viewer" />
-  <title>PDF Viewer - Illuminati Coaching Centre</title>
-  <link rel="icon" href="{% static 'images/favicon.ico' %}" type="image/x-icon" />
+  <!-- Allow pinch-to-zoom on mobile browsers -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta property="og:title" content="Illuminati">
+  <meta property="og:image" content="{% static 'images/favicon.png' %}">
+  <meta property="og:description" content="Study">
+  <title>PDF Viewer | Illuminati Coaching Centre</title>
+  <link rel="icon" href="{% static 'images/favicon.ico' %}" type="image/x-icon">
 
-  <!-- Tailwind & Flowbite -->
+  <!-- Tailwind CSS & Flowbite (for styling consistency with index) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.css" rel="stylesheet" />
 
   <!-- PDF.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <!-- Hammer.js for touch gestures -->
+  <script src="https://hammerjs.github.io/dist/hammer.min.js"></script>
 
   <style>
     body {
       font-family: 'Inter', sans-serif;
-      background: linear-gradient(120deg, #f1f5f9, #e0f2fe);
-      color: #1e293b;
+      background-color: #f3f4f6;
     }
-
-    .pdf-card {
-      backdrop-filter: blur(10px);
-      background: rgba(255, 255, 255, 0.85);
-      border-radius: 1rem;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-      overflow: hidden;
+    /* Container for the PDF pages */
+    #pdf-viewer {
+      background: #fff;
+      border-radius: 10px;
       padding: 1rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      overflow-y: auto;
+      max-height: 85vh;
+      scroll-behavior: smooth;
     }
-
-    #zoom-container {
-      transform-origin: center center;
-      touch-action: none;
-      transition: transform 0.1s ease;
-      will-change: transform;
-    }
-
     canvas {
       display: block;
-      margin: 1rem auto;
-      border-radius: 0.5rem;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      margin: 1.5rem auto;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     }
-
-    @media (max-width: 768px) {
-      .controls > * {
-        width: 100% !important;
-      }
+    /* Controls styling */
+    .control-btn {
+      @apply bg-blue-600 text-white font-semibold px-4 py-2 rounded shadow hover:bg-blue-700 transition;
+    }
+    .reset-btn {
+      @apply bg-yellow-500 text-white font-bold px-4 py-2 rounded shadow hover:bg-yellow-600 transition;
+    }
+    .page-input {
+      @apply px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring focus:border-blue-400 w-24;
+    }
+    /* Current Page Tracker */
+    #page-tracker {
+      text-align: center;
+      font-size: 1rem;
+      color: #4b5563;
+      margin-bottom: 0.5rem;
     }
   </style>
 </head>
 
-<body class="bg-gray-100">
+<body class="p-4">
+  <!-- Header -->
+  <h1 class="text-3xl text-center text-blue-800 font-bold mb-2">📄 PDF Viewer</h1>
+  <div id="page-tracker">Page 1 / ?</div>
 
-  <!-- NAVBAR -->
-  <nav class="bg-blue-800 sticky top-0 z-50 shadow-lg">
-    <div class="max-w-screen-xl flex justify-between items-center mx-auto p-4">
-      <a href="/" class="flex items-center space-x-3">
-        <img src="{% static 'images/logo2.png' %}" class="h-8" alt="Logo">
-        <span class="text-white text-2xl font-bold">Illuminati</span>
-      </a>
-      <div class="text-white space-x-4 hidden md:flex">
-        <a href="/" class="hover:text-yellow-300">Home</a>
-        <a href="#join" class="hover:text-yellow-300">Join</a>
-        <a href="#contact" class="hover:text-yellow-300">Contact</a>
-      </div>
+  <!-- Controls -->
+  <div class="flex flex-wrap gap-4 justify-center mb-6">
+    <button onclick="zoomIn()" class="control-btn">🔍➕ Zoom In</button>
+    <button onclick="zoomOut()" class="control-btn">🔍➖ Zoom Out</button>
+    <button onclick="resetZoom()" class="reset-btn">🔄 Reset Zoom</button>
+    <div class="flex gap-2 items-center">
+      <input type="number" id="page-input" class="page-input" placeholder="Page #" min="1">
+      <button onclick="scrollToPage()" class="control-btn">➡️ Go</button>
     </div>
-  </nav>
+  </div>
 
-  <!-- MAIN SECTION -->
-  <section class="max-w-6xl mx-auto py-12 px-4">
-    <h2 class="text-3xl font-extrabold text-center text-blue-800 mb-6">📘 View Study Material</h2>
+  <!-- PDF Viewer Container -->
+  <div id="pdf-viewer" class="overflow-auto border"></div>
 
-    <!-- CONTROLS -->
-    <div class="controls flex flex-wrap justify-center gap-4 mb-6">
-      <button onclick="zoomIn()" class="bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition">➕ Zoom In</button>
-      <button onclick="zoomOut()" class="bg-red-600 text-white px-4 py-2 rounded-lg shadow hover:bg-red-700 transition">➖ Zoom Out</button>
-      <button onclick="resetZoom()" class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition">🔄 Reset Zoom</button>
-      <div class="flex items-center bg-gray-200 px-3 py-2 rounded-lg shadow">
-        <input type="number" id="page-num" min="1" placeholder="Page #" class="w-16 text-center bg-transparent focus:outline-none text-blue-900 font-semibold" onchange="goToPage(this.value)" />
-        <span class="ml-2 text-sm text-gray-600">/ <span id="total-pages">?</span></span>
-      </div>
-    </div>
+  <!-- Hidden CSRF Token for Django POST (if needed) -->
+  <input type="hidden" id="csrf_token" value="{{ csrf_token }}" />
 
-    <!-- PDF CARD VIEWER -->
-    <div class="pdf-card">
-      <div id="zoom-wrapper">
-        <div id="zoom-container">
-          <div id="pdf-container"></div>
-        </div>
-      </div>
-    </div>
+  <!-- Optional Close & Submit Button -->
+  <div class="text-center mt-8">
+    <button onclick="sendodfData('ok')" class="block mx-auto px-6 py-3 bg-yellow-500 text-white rounded-lg shadow hover:bg-yellow-600 transition duration-300">
+      ✅ Close & Submit
+    </button>
+  </div>
 
-    <!-- CLOSE BUTTON -->
-    <input type="hidden" id="csrf_token" value="{{ csrf_token }}" />
-    <button onclick="sendodfData('ok')" class="mt-8 block mx-auto px-6 py-3 bg-yellow-500 text-white font-bold rounded-lg shadow hover:bg-yellow-600 transition">✅ Close & Submit</button>
-  </section>
-
-  <!-- JS LOGIC -->
+  <!-- Scripts -->
   <script>
-    let pdfDoc = null,
-        scale = 1.5,
-        pdfData = "{{ pdf_content|safe }}",
-        pdfUrl = "data:application/pdf;base64," + pdfData;
+    /* Global Variables */
+    let pdfDoc = null;
+    let renderScale = 1.5;  // Base rendering scale for PDF.js
+    let currentZoom = 1;    // Current zoom level (applied via transformation during pinch)
+    let hammerManager;
+    const viewer = document.getElementById("pdf-viewer");
 
-    const container = document.getElementById('pdf-container');
-    const zoomContainer = document.getElementById('zoom-container');
-
-    pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
-      pdfDoc = pdf;
-      document.getElementById('total-pages').textContent = pdf.numPages;
-      renderAllPages();
-    });
-
-    function renderAllPages() {
-      container.innerHTML = '';
-      for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-        pdfDoc.getPage(pageNum).then(page => {
-          const viewport = page.getViewport({ scale });
-          const outputScale = window.devicePixelRatio || 1;
-          const canvas = document.createElement('canvas');
-          canvas.id = `page-${page.pageNumber}`;
-          const ctx = canvas.getContext('2d');
-
-          canvas.width = viewport.width * outputScale;
-          canvas.height = viewport.height * outputScale;
-          canvas.style.width = viewport.width + 'px';
-          canvas.style.height = viewport.height + 'px';
-
-          page.render({
-            canvasContext: ctx,
-            viewport,
-            transform: [outputScale, 0, 0, outputScale, 0, 0]
-          });
-
-          container.appendChild(canvas);
-        });
-      }
-    }
-
-    function goToPage(num) {
-      const page = parseInt(num);
-      if (page >= 1 && page <= pdfDoc.numPages) {
-        const target = document.getElementById(`page-${page}`);
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Update current page tracker based on scroll position
+    function updatePageTracker() {
+      const canvases = viewer.querySelectorAll("canvas");
+      const scrollTop = viewer.scrollTop;
+      const viewerHeight = viewer.clientHeight;
+      for (let i = 0; i < canvases.length; i++) {
+        const canvas = canvases[i];
+        const offsetTop = canvas.offsetTop;
+        const canvasHeight = canvas.offsetHeight;
+        if (offsetTop <= scrollTop + viewerHeight / 2 && (offsetTop + canvasHeight) > scrollTop + viewerHeight / 2) {
+          document.getElementById("page-tracker").textContent = `Page ${i + 1} / ${pdfDoc.numPages}`;
+          break;
         }
       }
     }
 
-    function zoomIn() {
-      scale += 0.2;
-      renderAllPages();
-    }
+    viewer.addEventListener("scroll", updatePageTracker);
 
-    function zoomOut() {
-      if (scale > 0.5) {
-        scale -= 0.2;
-        renderAllPages();
+    // Load PDF using PDF.js
+    const pdfData = "{{ pdf_content|safe }}";
+    const pdfUrl = "data:application/pdf;base64," + pdfData;
+
+    pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
+      pdfDoc = pdf;
+      // Set the total pages in tracker (initially)
+      document.getElementById("page-tracker").textContent = `Page 1 / ${pdf.numPages}`;
+      renderAllPages();
+      // Initialize Hammer.js for touch gestures
+      initHammer();
+    });
+
+    // Renders all PDF pages into the viewer
+    function renderAllPages() {
+      viewer.innerHTML = "";
+      for (let i = 1; i <= pdfDoc.numPages; i++) {
+        pdfDoc.getPage(i).then(page => {
+          const viewport = page.getViewport({ scale: renderScale });
+          const canvas = document.createElement("canvas");
+          canvas.id = `page-${page.pageNumber}`;
+          const ctx = canvas.getContext("2d");
+          const outputScale = window.devicePixelRatio || 1;
+
+          canvas.width = viewport.width * outputScale;
+          canvas.height = viewport.height * outputScale;
+          canvas.style.width = viewport.width + "px";
+          canvas.style.height = viewport.height + "px";
+
+          page.render({
+            canvasContext: ctx,
+            viewport: viewport,
+            transform: [outputScale, 0, 0, outputScale, 0, 0]
+          });
+
+          viewer.appendChild(canvas);
+        });
       }
     }
 
+    // Zoom In / Out buttons re-render with new renderScale
+    function zoomIn() {
+      renderScale += 0.1;
+      renderAllPages();
+    }
+    function zoomOut() {
+      renderScale = Math.max(0.5, renderScale - 0.1);
+      renderAllPages();
+    }
     function resetZoom() {
-      currentScale = 1;
-      translateX = 0;
-      translateY = 0;
-      zoomContainer.style.transform = `scale(1) translate(0px, 0px)`;
+      // Reset both the global render scale and any pinch zoom transform
+      renderScale = 1.5;
+      currentZoom = 1;
+      viewer.style.transform = "";
+      renderAllPages();
     }
 
+    // Scroll To Page Input
+    function scrollToPage() {
+      const pageInput = document.getElementById("page-input");
+      const pageNum = parseInt(pageInput.value);
+      if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= pdfDoc.numPages) {
+        const target = document.getElementById(`page-${pageNum}`);
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      } else {
+        alert("Please enter a valid page number between 1 and " + pdfDoc.numPages);
+      }
+    }
+    document.getElementById("page-input").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") scrollToPage();
+    });
+
+    // OPTIONAL: Sample function to submit/close PDF viewer
     function sendodfData(allow) {
       const data = { "is_okk": allow };
       fetch(window.location.href, {
@@ -191,62 +211,40 @@
       .catch(error => console.error("Error:", error));
     }
 
-    // 👉 TOUCH ZOOM, DRAG, DOUBLE TAP
-    let currentScale = 1, translateX = 0, translateY = 0;
-    let pinchStartDistance = 0, lastTouchEnd = 0;
-    let startX = 0, startY = 0, isDragging = false;
+    // --- Hammer.js Integration for Pinch-to-Zoom ---
+    function initHammer() {
+      // Create a Hammer manager for the viewer
+      hammerManager = new Hammer.Manager(viewer);
+      // Add pinch recognizer (enable pinch)
+      const pinch = new Hammer.Pinch();
+      hammerManager.add([pinch]);
 
-    function getPinchDistance(touches) {
-      const dx = touches[0].clientX - touches[1].clientX;
-      const dy = touches[0].clientY - touches[1].clientY;
-      return Math.sqrt(dx * dx + dy * dy);
+      let initialScale = 1;
+
+      hammerManager.on("pinchstart", function(e) {
+        // When pinch starts, record the current transform scale (if any)
+        initialScale = currentZoom;
+      });
+
+      hammerManager.on("pinchmove", function(e) {
+        // Apply a temporary transform for smooth feedback
+        let newScale = initialScale * e.scale;
+        // Limit the scale factor for better usability
+        newScale = Math.max(0.5, Math.min(newScale, 3));
+        viewer.style.transform = `scale(${newScale})`;
+      });
+
+      hammerManager.on("pinchend", function(e) {
+        // When pinch ends, commit the new zoom level and re-render pages
+        currentZoom = initialScale * e.scale;
+        // Here we choose to re-render to keep the text sharp.
+        // We update renderScale accordingly.
+        renderScale = renderScale * (currentZoom);
+        // Clear the temporary transform
+        viewer.style.transform = "";
+        renderAllPages();
+      });
     }
-
-    zoomContainer.addEventListener("touchstart", (e) => {
-      if (e.touches.length === 2) {
-        pinchStartDistance = getPinchDistance(e.touches);
-      } else if (e.touches.length === 1 && currentScale > 1) {
-        isDragging = true;
-        startX = e.touches[0].clientX - translateX;
-        startY = e.touches[0].clientY - translateY;
-      }
-    }, { passive: false });
-
-    zoomContainer.addEventListener("touchmove", (e) => {
-      if (e.touches.length === 2) {
-        e.preventDefault();
-        const currentDistance = getPinchDistance(e.touches);
-        const scaleFactor = currentDistance / pinchStartDistance;
-        let newScale = currentScale * scaleFactor;
-        newScale = Math.min(Math.max(newScale, 0.5), 3);
-        zoomContainer.style.transform = `scale(${newScale}) translate(${translateX}px, ${translateY}px)`;
-      } else if (isDragging && e.touches.length === 1) {
-        e.preventDefault();
-        translateX = e.touches[0].clientX - startX;
-        translateY = e.touches[0].clientY - startY;
-        zoomContainer.style.transform = `scale(${currentScale}) translate(${translateX}px, ${translateY}px)`;
-      }
-    }, { passive: false });
-
-    zoomContainer.addEventListener("touchend", (e) => {
-      if (e.touches.length < 2) {
-        const match = zoomContainer.style.transform.match(/scale\(([^)]+)\)/);
-        if (match) currentScale = parseFloat(match[1]);
-        isDragging = false;
-      }
-    });
-
-    zoomContainer.addEventListener("touchend", function (e) {
-      const now = new Date().getTime();
-      if (now - lastTouchEnd <= 300 && e.touches.length === 0) {
-        e.preventDefault();
-        currentScale = currentScale > 1 ? 1 : 2;
-        translateX = 0;
-        translateY = 0;
-        zoomContainer.style.transform = `scale(${currentScale}) translate(0px, 0px)`;
-      }
-      lastTouchEnd = now;
-    });
   </script>
 </body>
 </html>

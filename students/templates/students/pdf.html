@@ -27,6 +27,11 @@
       padding: 1rem;
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
     }
+    #zoom-container {
+    touch-action: none;
+    transform-origin: center center;
+    transition: transform 0.1s ease-out;
+    }
     canvas {
       display: block;
       margin: 1.5rem auto;
@@ -78,7 +83,9 @@
     </div>
 
     <!-- PDF Display -->
-    <div id="pdf-container" class="pdf-wrapper"></div>
+    <div id="zoom-container" class="overflow-auto touch-none">
+  <div id="pdf-container" class="pdf-wrapper"></div>
+</div>
 
     <!-- Close & Submit -->
     <input type="hidden" id="csrf_token" value="{{ csrf_token }}" />
@@ -87,85 +94,153 @@
 
   <!-- PDF Script -->
   <script>
-    let pdfDoc = null,
-        scale = 1.5,
-        pdfData = "{{ pdf_content|safe }}",
-        pdfUrl = "data:application/pdf;base64," + pdfData;
+  let pdfDoc = null,
+      scale = 1.5,
+      pdfData = "{{ pdf_content|safe }}",
+      pdfUrl = "data:application/pdf;base64," + pdfData;
 
-    const container = document.getElementById('pdf-container');
+  const container = document.getElementById('pdf-container');
+  const zoomContainer = document.getElementById('zoom-container');
 
-    pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
-      pdfDoc = pdf;
-      document.getElementById('total-pages').textContent = pdf.numPages;
-      renderAllPages();
-    });
+  // Load PDF
+  pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
+    pdfDoc = pdf;
+    document.getElementById('total-pages').textContent = pdf.numPages;
+    renderAllPages();
+  });
 
-    function renderAllPages() {
-      container.innerHTML = '';
-      for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-        pdfDoc.getPage(pageNum).then(page => {
-          const viewport = page.getViewport({ scale });
-          const outputScale = window.devicePixelRatio || 1;
+  // Render all pages
+  function renderAllPages() {
+    container.innerHTML = '';
+    for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+      pdfDoc.getPage(pageNum).then(page => {
+        const viewport = page.getViewport({ scale });
+        const outputScale = window.devicePixelRatio || 1;
 
-          const canvas = document.createElement('canvas');
-          canvas.id = `page-${page.pageNumber}`;
-          const ctx = canvas.getContext('2d');
+        const canvas = document.createElement('canvas');
+        canvas.id = `page-${page.pageNumber}`;
+        const ctx = canvas.getContext('2d');
 
-          canvas.width = viewport.width * outputScale;
-          canvas.height = viewport.height * outputScale;
-          canvas.style.width = viewport.width + 'px';
-          canvas.style.height = viewport.height + 'px';
+        canvas.width = viewport.width * outputScale;
+        canvas.height = viewport.height * outputScale;
+        canvas.style.width = viewport.width + 'px';
+        canvas.style.height = viewport.height + 'px';
 
-          page.render({
-            canvasContext: ctx,
-            viewport,
-            transform: [outputScale, 0, 0, outputScale, 0, 0]
-          });
-
-          container.appendChild(canvas);
+        page.render({
+          canvasContext: ctx,
+          viewport,
+          transform: [outputScale, 0, 0, outputScale, 0, 0]
         });
+
+        container.appendChild(canvas);
+      });
+    }
+  }
+
+  // Page Scroll
+  function goToPage(num) {
+    const page = parseInt(num);
+    if (page >= 1 && page <= pdfDoc.numPages) {
+      const target = document.getElementById(`page-${page}`);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
+  }
 
-    function goToPage(num) {
-      const page = parseInt(num);
-      if (page >= 1 && page <= pdfDoc.numPages) {
-        const target = document.getElementById(`page-${page}`);
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }
-    }
+  function zoomIn() {
+    scale += 0.2;
+    renderAllPages();
+  }
 
-    function zoomIn() {
-      scale += 0.2;
+  function zoomOut() {
+    if (scale > 0.5) {
+      scale -= 0.2;
       renderAllPages();
     }
+  }
 
-    function zoomOut() {
-      if (scale > 0.5) {
-        scale -= 0.2;
-        renderAllPages();
-      }
-    }
-
-    function sendodfData(allow) {
-      const data = { "is_okk": allow };
-      fetch(window.location.href, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": document.getElementById("csrf_token").value
-        },
-        body: JSON.stringify(data)
+  function sendodfData(allow) {
+    const data = { "is_okk": allow };
+    fetch(window.location.href, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": document.getElementById("csrf_token").value
+      },
+      body: JSON.stringify(data)
+    })
+      .then(response => response.json())
+      .then(data => {
+        alert(data.message || data.error);
+        setTimeout(() => location.reload(), 500);
       })
-        .then(response => response.json())
-        .then(data => {
-          alert(data.message || data.error);
-          setTimeout(() => location.reload(), 500);
-        })
-        .catch(error => console.error("Error:", error));
+      .catch(error => console.error("Error:", error));
+  }
+
+  // TOUCH ZOOM, DRAG & DOUBLE TAP SUPPORT
+  let currentScale = 1;
+  let lastTouchEnd = 0;
+  let pinchStartDistance = 0;
+  let startX = 0, startY = 0;
+  let isDragging = false;
+
+  function getPinchDistance(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  zoomContainer.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 2) {
+      pinchStartDistance = getPinchDistance(e.touches);
+    } else if (e.touches.length === 1 && currentScale > 1) {
+      isDragging = true;
+      startX = e.touches[0].clientX - zoomContainer.offsetLeft;
+      startY = e.touches[0].clientY - zoomContainer.offsetTop;
     }
-  </script>
+  }, { passive: false });
+
+  zoomContainer.addEventListener("touchmove", (e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const currentDistance = getPinchDistance(e.touches);
+      const scaleFactor = currentDistance / pinchStartDistance;
+      let newScale = currentScale * scaleFactor;
+      newScale = Math.min(Math.max(newScale, 0.5), 3);
+      zoomContainer.style.transform = `scale(${newScale})`;
+    } else if (isDragging && e.touches.length === 1) {
+      e.preventDefault();
+      const moveX = e.touches[0].clientX - startX;
+      const moveY = e.touches[0].clientY - startY;
+      zoomContainer.style.transform += ` translate(${moveX}px, ${moveY}px)`;
+    }
+  }, { passive: false });
+
+  zoomContainer.addEventListener("touchend", (e) => {
+    if (e.touches.length < 2) {
+      const transform = zoomContainer.style.transform;
+      const match = transform.match(/scale\(([^)]+)\)/);
+      if (match) currentScale = parseFloat(match[1]);
+      isDragging = false;
+    }
+  });
+
+  // DOUBLE TAP TO TOGGLE ZOOM
+  zoomContainer.addEventListener("touchend", function (e) {
+    const now = new Date().getTime();
+    if (now - lastTouchEnd <= 300 && e.touches.length === 0) {
+      e.preventDefault();
+      if (currentScale > 1) {
+        currentScale = 1;
+      } else {
+        currentScale = 2;
+      }
+      zoomContainer.style.transform = `scale(${currentScale})`;
+    }
+    lastTouchEnd = now;
+  });
+</script>
+
 </body>
 </html>

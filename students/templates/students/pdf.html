@@ -7,37 +7,32 @@
   <meta property="og:title" content="Illuminati" />
   <meta property="og:image" content="{% static 'images/favicon.png' %}" />
   <meta property="og:description" content="Study" />
-  <title>PDF Viewer</title>
+  <title>PDF Viewer - Illuminati Coaching Centre</title>
   <link rel="icon" href="{% static 'images/favicon.ico' %}" type="image/x-icon" />
 
-  <!-- Tailwind CSS -->
+  <!-- Tailwind + Flowbite -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.css" rel="stylesheet" />
 
   <!-- PDF.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 
   <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      background-color: #f9fafb;
-    }
-
     .pdf-wrapper {
-      max-height: 85vh;
+      max-height: 80vh;
       overflow-y: auto;
       background-color: white;
-      border-radius: 8px;
+      border-radius: 12px;
       padding: 1rem;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
     }
-
     canvas {
       display: block;
       margin: 1.5rem auto;
       border-radius: 0.5rem;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
     }
-
     @media (max-width: 768px) {
       .controls > * {
         width: 100% !important;
@@ -46,43 +41,51 @@
   </style>
 </head>
 
-<body class="text-gray-900 dark:bg-gray-900 dark:text-gray-200">
+<body class="bg-gray-100 text-gray-800">
 
-  <div class="max-w-5xl mx-auto p-4">
-    <h2 class="text-3xl font-semibold text-center mb-6">📄 PDF Viewer (Vertical Mode)</h2>
+  <!-- Navbar -->
+  <nav class="bg-blue-800 border-gray-200 sticky top-0 z-50 shadow-lg">
+    <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
+      <a href="/" class="flex items-center space-x-3 rtl:space-x-reverse">
+        <img src="{% static 'images/logo2.png' %}" class="h-8" alt="Illuminati Logo" />
+        <span class="self-center text-2xl font-semibold whitespace-nowrap text-white">Illuminati</span>
+      </a>
+      <button data-collapse-toggle="navbar-default" type="button" class="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-white rounded-lg md:hidden hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500" aria-controls="navbar-default" aria-expanded="false">
+        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 17 14"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 1h15M1 7h15M1 13h15"/></svg>
+      </button>
+      <div class="hidden w-full md:block md:w-auto" id="navbar-default">
+        <ul class="font-medium flex flex-col p-4 md:p-0 mt-4 border border-blue-700 rounded-lg bg-blue-700 md:flex-row md:space-x-8 rtl:space-x-reverse md:mt-0 md:border-0 md:bg-blue-800">
+          <li><a href="/" class="block py-2 px-3 text-white rounded hover:text-yellow-300">Home</a></li>
+          <li><a href="#join" class="block py-2 px-3 text-white rounded hover:text-yellow-300">Join</a></li>
+          <li><a href="#contact" class="block py-2 px-3 text-white rounded hover:text-yellow-300">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- PDF Viewer -->
+  <section class="max-w-6xl mx-auto py-12 px-4">
+    <h2 class="text-3xl font-bold text-center text-blue-800 mb-6">📄 View Your Study Material</h2>
 
     <!-- Controls -->
-    <div class="controls flex flex-wrap justify-center gap-3 mb-6">
-      <button onclick="zoomIn()" class="bg-green-500 text-white px-4 py-2 rounded-lg shadow hover:bg-green-600">
-        🔍➕ Zoom In
-      </button>
-      <button onclick="zoomOut()" class="bg-red-500 text-white px-4 py-2 rounded-lg shadow hover:bg-red-600">
-        🔍➖ Zoom Out
-      </button>
-      <div class="flex items-center bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-lg shadow">
-        <input
-          type="number"
-          id="page-num"
-          min="1"
-          placeholder="Page"
-          class="w-16 text-center bg-transparent focus:outline-none dark:text-white"
-          onchange="goToPage(this.value)"
-        />
-        <span class="ml-2 text-sm">/ <span id="total-pages">?</span></span>
+    <div class="controls flex flex-wrap justify-center gap-4 mb-6">
+      <button onclick="zoomIn()" class="bg-green-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-700 transition">🔍➕ Zoom In</button>
+      <button onclick="zoomOut()" class="bg-red-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-red-700 transition">🔍➖ Zoom Out</button>
+      <div class="flex items-center bg-gray-200 px-3 py-2 rounded-lg shadow-md">
+        <input type="number" id="page-num" min="1" placeholder="Page #" class="w-16 text-center bg-transparent focus:outline-none text-blue-900 font-semibold" onchange="goToPage(this.value)" />
+        <span class="ml-2 text-sm text-gray-600">/ <span id="total-pages">?</span></span>
       </div>
     </div>
 
-    <!-- PDF Container -->
+    <!-- PDF Display -->
     <div id="pdf-container" class="pdf-wrapper"></div>
 
-    <!-- CSRF and Close -->
+    <!-- Close & Submit -->
     <input type="hidden" id="csrf_token" value="{{ csrf_token }}" />
-    <button onclick="sendodfData('ok')" class="block mx-auto mt-6 px-6 py-3 bg-yellow-500 text-white rounded-lg shadow hover:bg-yellow-600">
-      ✅ Close & Submit
-    </button>
-  </div>
+    <button onclick="sendodfData('ok')" class="mt-8 block mx-auto px-6 py-3 bg-yellow-500 text-white rounded-lg shadow hover:bg-yellow-600 transition duration-300">✅ Close & Submit</button>
+  </section>
 
-  <!-- Script -->
+  <!-- PDF Script -->
   <script>
     let pdfDoc = null,
         scale = 1.5,
@@ -91,14 +94,12 @@
 
     const container = document.getElementById('pdf-container');
 
-    // Load PDF
     pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
       pdfDoc = pdf;
       document.getElementById('total-pages').textContent = pdf.numPages;
       renderAllPages();
     });
 
-    // Render all pages
     function renderAllPages() {
       container.innerHTML = '';
       for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
@@ -115,12 +116,10 @@
           canvas.style.width = viewport.width + 'px';
           canvas.style.height = viewport.height + 'px';
 
-          const transform = [outputScale, 0, 0, outputScale, 0, 0];
-
           page.render({
             canvasContext: ctx,
             viewport,
-            transform
+            transform: [outputScale, 0, 0, outputScale, 0, 0]
           });
 
           container.appendChild(canvas);
@@ -128,7 +127,6 @@
       }
     }
 
-    // Scroll to page
     function goToPage(num) {
       const page = parseInt(num);
       if (page >= 1 && page <= pdfDoc.numPages) {
@@ -139,7 +137,6 @@
       }
     }
 
-    // Zoom controls
     function zoomIn() {
       scale += 0.2;
       renderAllPages();
@@ -152,7 +149,6 @@
       }
     }
 
-    // Submit close action
     function sendodfData(allow) {
       const data = { "is_okk": allow };
       fetch(window.location.href, {
@@ -171,6 +167,5 @@
         .catch(error => console.error("Error:", error));
     }
   </script>
-
 </body>
 </html>

@@ -6,11 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta property="og:title" content="Illuminati" />
   <meta property="og:image" content="{% static 'images/favicon.png' %}" />
-  <meta property="og:description" content="Study" />
+  <meta property="og:description" content="Study Materials Viewer" />
   <title>PDF Viewer - Illuminati Coaching Centre</title>
   <link rel="icon" href="{% static 'images/favicon.ico' %}" type="image/x-icon" />
 
-  <!-- Tailwind + Flowbite -->
+  <!-- Tailwind & Flowbite -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.css" rel="stylesheet" />
@@ -19,25 +19,35 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 
   <style>
-    .pdf-wrapper {
-      max-height: 80vh;
-      overflow-y: auto;
-      background-color: white;
-      border-radius: 12px;
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(120deg, #f1f5f9, #e0f2fe);
+      color: #1e293b;
+    }
+
+    .pdf-card {
+      backdrop-filter: blur(10px);
+      background: rgba(255, 255, 255, 0.85);
+      border-radius: 1rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
       padding: 1rem;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
     }
+
     #zoom-container {
-    touch-action: none;
-    transform-origin: center center;
-    transition: transform 0.1s ease-out;
+      transform-origin: center center;
+      touch-action: none;
+      transition: transform 0.1s ease;
+      will-change: transform;
     }
+
     canvas {
       display: block;
-      margin: 1.5rem auto;
+      margin: 1rem auto;
       border-radius: 0.5rem;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     }
+
     @media (max-width: 768px) {
       .controls > * {
         width: 100% !important;
@@ -46,201 +56,197 @@
   </style>
 </head>
 
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-100">
 
-  <!-- Navbar -->
-  <nav class="bg-blue-800 border-gray-200 sticky top-0 z-50 shadow-lg">
-    <div class="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
-      <a href="/" class="flex items-center space-x-3 rtl:space-x-reverse">
-        <img src="{% static 'images/logo2.png' %}" class="h-8" alt="Illuminati Logo" />
-        <span class="self-center text-2xl font-semibold whitespace-nowrap text-white">Illuminati</span>
+  <!-- NAVBAR -->
+  <nav class="bg-blue-800 sticky top-0 z-50 shadow-lg">
+    <div class="max-w-screen-xl flex justify-between items-center mx-auto p-4">
+      <a href="/" class="flex items-center space-x-3">
+        <img src="{% static 'images/logo2.png' %}" class="h-8" alt="Logo">
+        <span class="text-white text-2xl font-bold">Illuminati</span>
       </a>
-      <button data-collapse-toggle="navbar-default" type="button" class="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-white rounded-lg md:hidden hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500" aria-controls="navbar-default" aria-expanded="false">
-        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 17 14"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 1h15M1 7h15M1 13h15"/></svg>
-      </button>
-      <div class="hidden w-full md:block md:w-auto" id="navbar-default">
-        <ul class="font-medium flex flex-col p-4 md:p-0 mt-4 border border-blue-700 rounded-lg bg-blue-700 md:flex-row md:space-x-8 rtl:space-x-reverse md:mt-0 md:border-0 md:bg-blue-800">
-          <li><a href="/" class="block py-2 px-3 text-white rounded hover:text-yellow-300">Home</a></li>
-          <li><a href="#join" class="block py-2 px-3 text-white rounded hover:text-yellow-300">Join</a></li>
-          <li><a href="#contact" class="block py-2 px-3 text-white rounded hover:text-yellow-300">Contact</a></li>
-        </ul>
+      <div class="text-white space-x-4 hidden md:flex">
+        <a href="/" class="hover:text-yellow-300">Home</a>
+        <a href="#join" class="hover:text-yellow-300">Join</a>
+        <a href="#contact" class="hover:text-yellow-300">Contact</a>
       </div>
     </div>
   </nav>
 
-  <!-- PDF Viewer -->
+  <!-- MAIN SECTION -->
   <section class="max-w-6xl mx-auto py-12 px-4">
-    <h2 class="text-3xl font-bold text-center text-blue-800 mb-6">📄 View Your Study Material</h2>
+    <h2 class="text-3xl font-extrabold text-center text-blue-800 mb-6">📘 View Study Material</h2>
 
-    <!-- Controls -->
+    <!-- CONTROLS -->
     <div class="controls flex flex-wrap justify-center gap-4 mb-6">
-      <button onclick="zoomIn()" class="bg-green-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-700 transition">🔍➕ Zoom In</button>
-      <button onclick="zoomOut()" class="bg-red-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-red-700 transition">🔍➖ Zoom Out</button>
-      <div class="flex items-center bg-gray-200 px-3 py-2 rounded-lg shadow-md">
+      <button onclick="zoomIn()" class="bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition">➕ Zoom In</button>
+      <button onclick="zoomOut()" class="bg-red-600 text-white px-4 py-2 rounded-lg shadow hover:bg-red-700 transition">➖ Zoom Out</button>
+      <button onclick="resetZoom()" class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition">🔄 Reset Zoom</button>
+      <div class="flex items-center bg-gray-200 px-3 py-2 rounded-lg shadow">
         <input type="number" id="page-num" min="1" placeholder="Page #" class="w-16 text-center bg-transparent focus:outline-none text-blue-900 font-semibold" onchange="goToPage(this.value)" />
         <span class="ml-2 text-sm text-gray-600">/ <span id="total-pages">?</span></span>
       </div>
     </div>
 
-    <!-- PDF Display -->
-    <div id="zoom-container" class="overflow-auto touch-none">
-  <div id="pdf-container" class="pdf-wrapper"></div>
-</div>
+    <!-- PDF CARD VIEWER -->
+    <div class="pdf-card">
+      <div id="zoom-wrapper">
+        <div id="zoom-container">
+          <div id="pdf-container"></div>
+        </div>
+      </div>
+    </div>
 
-    <!-- Close & Submit -->
+    <!-- CLOSE BUTTON -->
     <input type="hidden" id="csrf_token" value="{{ csrf_token }}" />
-    <button onclick="sendodfData('ok')" class="mt-8 block mx-auto px-6 py-3 bg-yellow-500 text-white rounded-lg shadow hover:bg-yellow-600 transition duration-300">✅ Close & Submit</button>
+    <button onclick="sendodfData('ok')" class="mt-8 block mx-auto px-6 py-3 bg-yellow-500 text-white font-bold rounded-lg shadow hover:bg-yellow-600 transition">✅ Close & Submit</button>
   </section>
 
-  <!-- PDF Script -->
+  <!-- JS LOGIC -->
   <script>
-  let pdfDoc = null,
-      scale = 1.5,
-      pdfData = "{{ pdf_content|safe }}",
-      pdfUrl = "data:application/pdf;base64," + pdfData;
+    let pdfDoc = null,
+        scale = 1.5,
+        pdfData = "{{ pdf_content|safe }}",
+        pdfUrl = "data:application/pdf;base64," + pdfData;
 
-  const container = document.getElementById('pdf-container');
-  const zoomContainer = document.getElementById('zoom-container');
+    const container = document.getElementById('pdf-container');
+    const zoomContainer = document.getElementById('zoom-container');
 
-  // Load PDF
-  pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
-    pdfDoc = pdf;
-    document.getElementById('total-pages').textContent = pdf.numPages;
-    renderAllPages();
-  });
+    pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
+      pdfDoc = pdf;
+      document.getElementById('total-pages').textContent = pdf.numPages;
+      renderAllPages();
+    });
 
-  // Render all pages
-  function renderAllPages() {
-    container.innerHTML = '';
-    for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-      pdfDoc.getPage(pageNum).then(page => {
-        const viewport = page.getViewport({ scale });
-        const outputScale = window.devicePixelRatio || 1;
+    function renderAllPages() {
+      container.innerHTML = '';
+      for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+        pdfDoc.getPage(pageNum).then(page => {
+          const viewport = page.getViewport({ scale });
+          const outputScale = window.devicePixelRatio || 1;
+          const canvas = document.createElement('canvas');
+          canvas.id = `page-${page.pageNumber}`;
+          const ctx = canvas.getContext('2d');
 
-        const canvas = document.createElement('canvas');
-        canvas.id = `page-${page.pageNumber}`;
-        const ctx = canvas.getContext('2d');
+          canvas.width = viewport.width * outputScale;
+          canvas.height = viewport.height * outputScale;
+          canvas.style.width = viewport.width + 'px';
+          canvas.style.height = viewport.height + 'px';
 
-        canvas.width = viewport.width * outputScale;
-        canvas.height = viewport.height * outputScale;
-        canvas.style.width = viewport.width + 'px';
-        canvas.style.height = viewport.height + 'px';
+          page.render({
+            canvasContext: ctx,
+            viewport,
+            transform: [outputScale, 0, 0, outputScale, 0, 0]
+          });
 
-        page.render({
-          canvasContext: ctx,
-          viewport,
-          transform: [outputScale, 0, 0, outputScale, 0, 0]
+          container.appendChild(canvas);
         });
-
-        container.appendChild(canvas);
-      });
-    }
-  }
-
-  // Page Scroll
-  function goToPage(num) {
-    const page = parseInt(num);
-    if (page >= 1 && page <= pdfDoc.numPages) {
-      const target = document.getElementById(`page-${page}`);
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
-  }
 
-  function zoomIn() {
-    scale += 0.2;
-    renderAllPages();
-  }
+    function goToPage(num) {
+      const page = parseInt(num);
+      if (page >= 1 && page <= pdfDoc.numPages) {
+        const target = document.getElementById(`page-${page}`);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }
 
-  function zoomOut() {
-    if (scale > 0.5) {
-      scale -= 0.2;
+    function zoomIn() {
+      scale += 0.2;
       renderAllPages();
     }
-  }
 
-  function sendodfData(allow) {
-    const data = { "is_okk": allow };
-    fetch(window.location.href, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRFToken": document.getElementById("csrf_token").value
-      },
-      body: JSON.stringify(data)
-    })
+    function zoomOut() {
+      if (scale > 0.5) {
+        scale -= 0.2;
+        renderAllPages();
+      }
+    }
+
+    function resetZoom() {
+      currentScale = 1;
+      translateX = 0;
+      translateY = 0;
+      zoomContainer.style.transform = `scale(1) translate(0px, 0px)`;
+    }
+
+    function sendodfData(allow) {
+      const data = { "is_okk": allow };
+      fetch(window.location.href, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": document.getElementById("csrf_token").value
+        },
+        body: JSON.stringify(data)
+      })
       .then(response => response.json())
       .then(data => {
         alert(data.message || data.error);
         setTimeout(() => location.reload(), 500);
       })
       .catch(error => console.error("Error:", error));
-  }
-
-  // TOUCH ZOOM, DRAG & DOUBLE TAP SUPPORT
-  let currentScale = 1;
-  let lastTouchEnd = 0;
-  let pinchStartDistance = 0;
-  let startX = 0, startY = 0;
-  let isDragging = false;
-
-  function getPinchDistance(touches) {
-    const dx = touches[0].clientX - touches[1].clientX;
-    const dy = touches[0].clientY - touches[1].clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
-
-  zoomContainer.addEventListener("touchstart", (e) => {
-    if (e.touches.length === 2) {
-      pinchStartDistance = getPinchDistance(e.touches);
-    } else if (e.touches.length === 1 && currentScale > 1) {
-      isDragging = true;
-      startX = e.touches[0].clientX - zoomContainer.offsetLeft;
-      startY = e.touches[0].clientY - zoomContainer.offsetTop;
     }
-  }, { passive: false });
 
-  zoomContainer.addEventListener("touchmove", (e) => {
-    if (e.touches.length === 2) {
-      e.preventDefault();
-      const currentDistance = getPinchDistance(e.touches);
-      const scaleFactor = currentDistance / pinchStartDistance;
-      let newScale = currentScale * scaleFactor;
-      newScale = Math.min(Math.max(newScale, 0.5), 3);
-      zoomContainer.style.transform = `scale(${newScale})`;
-    } else if (isDragging && e.touches.length === 1) {
-      e.preventDefault();
-      const moveX = e.touches[0].clientX - startX;
-      const moveY = e.touches[0].clientY - startY;
-      zoomContainer.style.transform += ` translate(${moveX}px, ${moveY}px)`;
+    // 👉 TOUCH ZOOM, DRAG, DOUBLE TAP
+    let currentScale = 1, translateX = 0, translateY = 0;
+    let pinchStartDistance = 0, lastTouchEnd = 0;
+    let startX = 0, startY = 0, isDragging = false;
+
+    function getPinchDistance(touches) {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
     }
-  }, { passive: false });
 
-  zoomContainer.addEventListener("touchend", (e) => {
-    if (e.touches.length < 2) {
-      const transform = zoomContainer.style.transform;
-      const match = transform.match(/scale\(([^)]+)\)/);
-      if (match) currentScale = parseFloat(match[1]);
-      isDragging = false;
-    }
-  });
-
-  // DOUBLE TAP TO TOGGLE ZOOM
-  zoomContainer.addEventListener("touchend", function (e) {
-    const now = new Date().getTime();
-    if (now - lastTouchEnd <= 300 && e.touches.length === 0) {
-      e.preventDefault();
-      if (currentScale > 1) {
-        currentScale = 1;
-      } else {
-        currentScale = 2;
+    zoomContainer.addEventListener("touchstart", (e) => {
+      if (e.touches.length === 2) {
+        pinchStartDistance = getPinchDistance(e.touches);
+      } else if (e.touches.length === 1 && currentScale > 1) {
+        isDragging = true;
+        startX = e.touches[0].clientX - translateX;
+        startY = e.touches[0].clientY - translateY;
       }
-      zoomContainer.style.transform = `scale(${currentScale})`;
-    }
-    lastTouchEnd = now;
-  });
-</script>
+    }, { passive: false });
 
+    zoomContainer.addEventListener("touchmove", (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const currentDistance = getPinchDistance(e.touches);
+        const scaleFactor = currentDistance / pinchStartDistance;
+        let newScale = currentScale * scaleFactor;
+        newScale = Math.min(Math.max(newScale, 0.5), 3);
+        zoomContainer.style.transform = `scale(${newScale}) translate(${translateX}px, ${translateY}px)`;
+      } else if (isDragging && e.touches.length === 1) {
+        e.preventDefault();
+        translateX = e.touches[0].clientX - startX;
+        translateY = e.touches[0].clientY - startY;
+        zoomContainer.style.transform = `scale(${currentScale}) translate(${translateX}px, ${translateY}px)`;
+      }
+    }, { passive: false });
+
+    zoomContainer.addEventListener("touchend", (e) => {
+      if (e.touches.length < 2) {
+        const match = zoomContainer.style.transform.match(/scale\(([^)]+)\)/);
+        if (match) currentScale = parseFloat(match[1]);
+        isDragging = false;
+      }
+    });
+
+    zoomContainer.addEventListener("touchend", function (e) {
+      const now = new Date().getTime();
+      if (now - lastTouchEnd <= 300 && e.touches.length === 0) {
+        e.preventDefault();
+        currentScale = currentScale > 1 ? 1 : 2;
+        translateX = 0;
+        translateY = 0;
+        zoomContainer.style.transform = `scale(${currentScale}) translate(0px, 0px)`;
+      }
+      lastTouchEnd = now;
+    });
+  </script>
 </body>
 </html>

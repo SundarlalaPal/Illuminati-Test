@@ -1,230 +1,168 @@
-{% load static %}
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta property="og:title" content="Illuminati">
-  <meta property="og:image" content="{% static 'images/favicon.png' %}">
-  <meta property="og:description" content="Study">
-  <title>PDF Viewer | Illuminati Coaching Centre</title>
-  <link rel="icon" href="{% static 'images/favicon.ico' %}" type="image/x-icon">
-
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- PDF.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-  <!-- Hammer.js for touch gestures -->
-  <script src="https://hammerjs.github.io/dist/hammer.min.js"></script>
-
+  <meta charset="UTF-8">
+  <title>Full PDF Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    /* Basic container styles */
-    body {
-      font-family: 'Inter', sans-serif;
-      background-color: #f3f4f6;
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
     }
 
-    #pdf-viewer {
-      background: #fff;
-      border-radius: 10px;
-      padding: 1rem;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-      overflow-y: auto;
-      max-height: 85vh;
-      scroll-behavior: smooth;
-    }
-
-    .canvas-container {
-      width: 100%;
+    #toolbar {
+      background: #333;
+      color: white;
+      padding: 10px;
       display: flex;
       justify-content: center;
-      padding: 10px 0;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    #toolbar button {
+      margin: 5px;
+      padding: 8px 12px;
+      border: none;
+      background: #555;
+      color: white;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    #toolbar span {
+      margin: 0 10px;
+    }
+
+    #viewerContainer {
+      height: calc(100vh - 60px);
+      overflow: auto;
+      text-align: center;
+      background: #777;
     }
 
     canvas {
-      display: block;
-      margin: 1rem auto;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Control buttons */
-    .control-btn {
-      @apply bg-blue-600 text-white font-semibold px-4 py-2 rounded shadow hover:bg-blue-700 transition;
-    }
-
-    /* Page navigation */
-    .page-input {
-      @apply px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring focus:border-blue-400 w-24;
-    }
-
-    /* Current page tracker */
-    #page-tracker {
-      text-align: center;
-      font-size: 1rem;
-      color: #4b5563;
-      margin-bottom: 1rem;
-    }
-
-    /* Custom reset button */
-    .reset-btn {
-      @apply bg-yellow-500 text-white font-bold px-4 py-2 rounded shadow hover:bg-yellow-600 transition;
+      margin-top: 10px;
+      background: white;
+      border-radius: 8px;
     }
   </style>
 </head>
-
-<body class="p-4">
-
-  <h1 class="text-3xl text-center text-blue-800 font-bold mb-2">📄 PDF Viewer</h1>
-  <div id="page-tracker">Page 1 / ?</div>
-
-  <!-- Controls for Zoom & Navigation -->
-  <div class="flex flex-wrap gap-4 justify-center mb-6">
-    <button onclick="zoomIn()" class="control-btn">🔍➕ Zoom In</button>
-    <button onclick="zoomOut()" class="control-btn">🔍➖ Zoom Out</button>
-    <button onclick="resetZoom()" class="reset-btn">🔄 Reset Zoom</button>
-    <div class="flex gap-2 items-center">
-      <input type="number" id="page-input" class="page-input" placeholder="Page #" min="1">
-      <button onclick="goToPage()" class="control-btn">➡️ Go</button>
-    </div>
+<body>
+  <div id="toolbar">
+    <button onclick="prevPage()">Previous</button>
+    <span>Page <span id="page_num"></span> / <span id="page_count"></span></span>
+    <button onclick="nextPage()">Next</button>
+    <button onclick="zoomIn()">Zoom In</button>
+    <button onclick="zoomOut()">Zoom Out</button>
+    <button onclick="rotate()">Rotate</button>
+    <button onclick="toggleFullscreen()">Fullscreen</button>
   </div>
 
-  <!-- PDF Container -->
-  <div id="pdf-viewer" class="overflow-auto touch-auto border">
-    <!-- Canvas pages rendered here -->
+  <div id="viewerContainer">
+    <canvas id="pdf-canvas"></canvas>
   </div>
 
-  <!-- Hidden CSRF Token -->
-  <input type="hidden" id="csrf_token" value="{{ csrf_token }}" />
-
-  <!-- Submit Button -->
-  <div class="text-center mt-8">
-    <button onclick="sendodfData('ok')" class="block mx-auto px-6 py-3 bg-yellow-500 text-white rounded-lg shadow hover:bg-yellow-600 transition duration-300">
-      ✅ Close & Submit
-    </button>
-  </div>
-
+  <!-- Load PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.10.111/pdf.min.js"></script>
   <script>
-    /* Global Variables */
-    let pdfDoc = null;
-    let scale = 1.5;
-    const viewer = document.getElementById("pdf-viewer");
-    const pageTracker = document.getElementById("page-tracker");
-    const pdfData = "{{ pdf_content|safe }}";
-    const pdfUrl = "data:application/pdf;base64," + pdfData;
+    const base64PDF = `{{ pdf_content|safe }}`;
+    const pdfData = atob(base64PDF);
+    const pdfjsLib = window['pdfjs-dist/build/pdf'];
 
-    // Load the PDF
-    pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
-      pdfDoc = pdf;
-      pageTracker.textContent = `Page 1 / ${pdf.numPages}`;
-      renderAllPages();
-      initHammer();
-    });
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.10.111/pdf.worker.min.js';
 
-    function renderAllPages() {
-      viewer.innerHTML = ""; // Clear previous pages
-      for (let i = 1; i <= pdfDoc.numPages; i++) {
-        pdfDoc.getPage(i).then(page => {
-          const viewport = page.getViewport({ scale });
-          const canvas = document.createElement("canvas");
-          canvas.id = `page-${page.pageNumber}`;
-          const ctx = canvas.getContext("2d");
-          const outputScale = window.devicePixelRatio || 1;
+    const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array([...pdfData].map(c => c.charCodeAt(0))) });
 
-          canvas.width = viewport.width * outputScale;
-          canvas.height = viewport.height * outputScale;
-          canvas.style.width = viewport.width + "px";
-          canvas.style.height = viewport.height + "px";
+    let pdfDoc = null,
+        pageNum = 1,
+        pageRendering = false,
+        pageNumPending = null,
+        scale = 1.5,
+        rotation = 0,
+        canvas = document.getElementById('pdf-canvas'),
+        ctx = canvas.getContext('2d');
 
-          page.render({
-            canvasContext: ctx,
-            viewport: viewport,
-            transform: [outputScale, 0, 0, outputScale, 0, 0]
-          });
+    function renderPage(num) {
+      pageRendering = true;
 
-          const container = document.createElement("div");
-          container.className = "canvas-container";
-          container.appendChild(canvas);
-          viewer.appendChild(container);
+      pdfDoc.getPage(num).then(function(page) {
+        const viewport = page.getViewport({ scale: scale, rotation: rotation });
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        const renderContext = {
+          canvasContext: ctx,
+          viewport: viewport
+        };
+        const renderTask = page.render(renderContext);
+
+        renderTask.promise.then(function() {
+          pageRendering = false;
+
+          if (pageNumPending !== null) {
+            renderPage(pageNumPending);
+            pageNumPending = null;
+          }
         });
-      }
+
+        document.getElementById('page_num').textContent = num;
+      });
     }
 
-    // Zoom In
-    function zoomIn() {
-      scale += 0.1;
-      renderAllPages();
-    }
-
-    // Zoom Out
-    function zoomOut() {
-      scale = Math.max(0.5, scale - 0.1);
-      renderAllPages();
-    }
-
-    // Reset Zoom
-    function resetZoom() {
-      scale = 1.5;
-      renderAllPages();
-    }
-
-    // Go to a specific page
-    function goToPage() {
-      const pageNum = parseInt(document.getElementById("page-input").value);
-      if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= pdfDoc.numPages) {
-        const targetCanvas = document.getElementById(`page-${pageNum}`);
-        if (targetCanvas) {
-          targetCanvas.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+    function queueRenderPage(num) {
+      if (pageRendering) {
+        pageNumPending = num;
       } else {
-        alert("Please enter a valid page number.");
+        renderPage(num);
       }
     }
 
-    // Detect Enter key in input
-    document.getElementById("page-input").addEventListener("keydown", function (e) {
-      if (e.key === "Enter") goToPage();
+    function prevPage() {
+      if (pageNum <= 1) return;
+      pageNum--;
+      queueRenderPage(pageNum);
+    }
+
+    function nextPage() {
+      if (pageNum >= pdfDoc.numPages) return;
+      pageNum++;
+      queueRenderPage(pageNum);
+    }
+
+    function zoomIn() {
+      scale = Math.min(scale + 0.25, 4);
+      queueRenderPage(pageNum);
+    }
+
+    function zoomOut() {
+      scale = Math.max(scale - 0.25, 0.5);
+      queueRenderPage(pageNum);
+    }
+
+    function rotate() {
+      rotation = (rotation + 90) % 360;
+      queueRenderPage(pageNum);
+    }
+
+    function toggleFullscreen() {
+      const viewer = document.getElementById("viewerContainer");
+      if (!document.fullscreenElement) {
+        viewer.requestFullscreen().catch(err => console.log(err));
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    loadingTask.promise.then(function(pdf) {
+      pdfDoc = pdf;
+      document.getElementById('page_count').textContent = pdf.numPages;
+      renderPage(pageNum);
     });
-
-    // Optional: Submit function (close button)
-    function sendodfData(allow) {
-      const data = { "is_okk": allow };
-      fetch(window.location.href, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": document.getElementById("csrf_token").value
-        },
-        body: JSON.stringify(data)
-      })
-      .then(response => response.json())
-      .then(data => {
-        alert(data.message || data.error);
-        setTimeout(() => location.reload(), 500);
-      })
-      .catch(error => console.error("Error:", error));
-    }
-
-    // Hammer.js for pinch-to-zoom and pan
-    function initHammer() {
-      const hammer = new Hammer(viewer);
-      const pinch = new Hammer.Pinch();
-      hammer.add([pinch]);
-
-      let initialScale = scale;
-
-      hammer.on("pinchstart", function(e) {
-        initialScale = scale;
-      });
-
-      hammer.on("pinchmove", function(e) {
-        let newScale = initialScale * e.scale;
-        scale = Math.max(0.5, Math.min(newScale, 3)); // Clamp between 0.5 and 3
-        renderAllPages();
-      });
-    }
   </script>
 </body>
-
 </html>

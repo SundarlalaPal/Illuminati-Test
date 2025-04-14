@@ -1,18 +1,23 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta property="og:title" content="Illuminati">
-<meta property="og:image" content="{% static 'images/favicon.png' %}">
-<meta property="og:description" content="Study">
-    <title>PDFS</title>
-    <link rel="icon" href="{% static 'images/favicon.ico' %}" type="image/x-icon">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta property="og:title" content="Illuminati" />
+    <meta property="og:image" content="{% static 'images/favicon.png' %}" />
+    <meta property="og:description" content="Study Material Selector" />
+    <title>Select PDF - Illuminati Coaching</title>
+    <link rel="icon" href="{% static 'images/favicon.ico' %}" type="image/x-icon" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Flowbite (optional for UI) -->
+    <script src="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.css" rel="stylesheet" />
+
     <script>
-
-
         function sendpdfData(allow, namee) {
             const data = {
                 "open_ok": allow,
@@ -27,50 +32,91 @@
                 },
                 body: JSON.stringify(data)
             })
-                .then(response => {
-                    if (response.redirected) {
-                        window.location.href = response.url;  // This will follow the redirect
-                    } else {
-                        // Optional fallback: handle other cases
-                        return response.json();
-                    }
-                })
-                .then(data => {
-                    if (data && data.message) {
-                        alert(data.message);
-                    }
-                })
-                .catch(error => console.error("Error:", error));
-            }
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                } else {
+                    return response.json();
+                }
+            })
+            .then(data => {
+                if (data && data.message) {
+                    alert(data.message);
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        }
     </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(to bottom right, #f1f5f9, #e0f2fe);
+        }
+
+        .table-shadow {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+        }
+    </style>
 </head>
 
-<body>
+<body class="text-gray-900">
+
+    <!-- CSRF -->
     <input type="hidden" id="csrf_token" value="{{ csrf_token }}">
 
-    <table border="1">
-        <thead>
-            <tr>
-                <th>PDF Names</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for pdf in pdfs %}
-            <tr>
-                <td>{{ pdf.name }}</td>
-                <td>
-                    <button onclick="sendpdfData('True','{{ pdf.name|escapejs }}')">Open</button>
-                </td>
-            </tr>
-            {% empty %}
-            <td>No pdfs found</td>
-            <td>No Action</td>
-            {% endfor %}
-        </tbody>
-    </table>
+    <!-- NAVBAR -->
+    <nav class="bg-blue-800 text-white py-4 shadow-md">
+        <div class="max-w-screen-xl mx-auto px-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <img src="{% static 'images/logo2.png' %}" alt="Logo" class="h-8">
+                <h1 class="text-2xl font-bold">Illuminati</h1>
+            </div>
+            <div class="space-x-6 hidden md:flex">
+                <a href="/" class="hover:text-yellow-400">Home</a>
+                <a href="#contact" class="hover:text-yellow-400">Contact</a>
+            </div>
+        </div>
+    </nav>
 
+    <!-- MAIN SECTION -->
+    <section class="max-w-4xl mx-auto mt-10 px-4">
+        <h2 class="text-3xl font-extrabold text-blue-800 text-center mb-6">📚 Select Your Study PDF</h2>
 
+        <div class="overflow-x-auto bg-white p-4 table-shadow">
+            <table class="min-w-full text-center">
+                <thead class="bg-blue-700 text-white">
+                    <tr>
+                        <th class="py-3 px-4 text-lg">📄 PDF Name</th>
+                        <th class="py-3 px-4 text-lg">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="text-gray-800">
+                    {% for pdf in pdfs %}
+                    <tr class="border-b hover:bg-blue-50 transition duration-200">
+                        <td class="py-3 px-4 font-medium">{{ pdf.name }}</td>
+                        <td class="py-3 px-4">
+                            <button onclick="sendpdfData('True','{{ pdf.name|escapejs }}')"
+                                class="bg-yellow-500 hover:bg-yellow-400 text-white px-4 py-2 rounded-lg font-semibold shadow transition">
+                                Open
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td class="py-3 px-4 text-red-500">No PDFs found</td>
+                        <td class="py-3 px-4 text-gray-400">No Action</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="mt-12 text-center text-sm text-gray-500">
+        &copy; 2025 Illuminati Coaching Centre. All rights reserved.
+    </footer>
 </body>
-
 </html>

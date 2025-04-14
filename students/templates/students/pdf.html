@@ -2,87 +2,68 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PDF Viewer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Full PDF Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
     html, body {
       margin: 0;
       padding: 0;
       height: 100%;
-      background: #eee;
-      font-family: Arial, sans-serif;
       overflow: hidden;
+      font-family: sans-serif;
+      background-color: #f5f5f5;
     }
 
     #toolbar {
       background: #222;
-      color: #fff;
+      color: white;
       padding: 10px;
-      text-align: center;
       display: flex;
-      justify-content: center;
       flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
     }
 
     #toolbar button {
       margin: 5px;
       padding: 8px 12px;
-      background: #444;
+      background-color: #444;
       border: none;
       border-radius: 5px;
       color: white;
       cursor: pointer;
     }
 
-    #toolbar span {
-      margin: 0 10px;
-    }
-
-    .pdf-card-container {
+    #viewerContainer {
       height: calc(100vh - 60px);
-      padding: 10px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
       overflow: auto;
+      padding: 20px;
+      background: #ddd;
     }
 
-    .pdf-card {
-      background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      overflow: hidden;
-      padding: 15px;
-      touch-action: none;
+    .pdf-page {
+      margin: 10px auto;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      background: white;
+      border-radius: 8px;
     }
 
-    #pdf-canvas {
-      display: block;
-      margin: auto;
-      border-radius: 6px;
-      max-width: none;
+    #pdfPagesWrapper {
+      transform-origin: top left;
     }
   </style>
 </head>
 <body>
+
   <div id="toolbar">
-    <button onclick="prevPage()">Previous</button>
-    <span>Page <span id="page_num"></span> / <span id="page_count"></span></span>
-    <button onclick="nextPage()">Next</button>
     <button onclick="zoomIn()">Zoom In</button>
     <button onclick="zoomOut()">Zoom Out</button>
     <button onclick="rotate()">Rotate</button>
     <button onclick="toggleFullscreen()">Fullscreen</button>
   </div>
 
-  <div class="pdf-card-container" id="viewerContainer">
-    <div class="pdf-card" id="pdfCard">
-      <canvas id="pdf-canvas"></canvas>
-    </div>
+  <div id="viewerContainer">
+    <div id="pdfPagesWrapper"></div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.10.111/pdf.min.js"></script>
@@ -92,131 +73,95 @@
     const pdfjsLib = window['pdfjs-dist/build/pdf'];
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.10.111/pdf.worker.min.js';
 
-    const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array([...pdfData].map(c => c.charCodeAt(0))) });
+    const pdfPagesWrapper = document.getElementById("pdfPagesWrapper");
+    let scale = 1.25;
+    let rotation = 0;
 
-    let pdfDoc = null,
-        pageNum = 1,
-        pageRendering = false,
-        pageNumPending = null,
-        scale = 1.5,
-        rotation = 0,
-        canvas = document.getElementById('pdf-canvas'),
-        ctx = canvas.getContext('2d');
+    const renderAllPages = (pdf) => {
+      pdfPagesWrapper.innerHTML = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        pdf.getPage(i).then(page => {
+          const viewport = page.getViewport({ scale, rotation });
+          const canvas = document.createElement("canvas");
+          canvas.classList.add("pdf-page");
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
 
-    function renderPage(num) {
-      pageRendering = true;
-      pdfDoc.getPage(num).then(function(page) {
-        const viewport = page.getViewport({ scale, rotation });
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+          const context = canvas.getContext('2d');
+          const renderContext = {
+            canvasContext: context,
+            viewport: viewport
+          };
 
-        const renderContext = {
-          canvasContext: ctx,
-          viewport: viewport
-        };
-        const renderTask = page.render(renderContext);
-
-        renderTask.promise.then(() => {
-          pageRendering = false;
-          if (pageNumPending !== null) {
-            renderPage(pageNumPending);
-            pageNumPending = null;
-          }
+          page.render(renderContext);
+          pdfPagesWrapper.appendChild(canvas);
         });
-
-        document.getElementById('page_num').textContent = num;
-      });
-    }
-
-    function queueRenderPage(num) {
-      if (pageRendering) {
-        pageNumPending = num;
-      } else {
-        renderPage(num);
       }
-    }
+    };
 
-    function prevPage() {
-      if (pageNum <= 1) return;
-      pageNum--;
-      queueRenderPage(pageNum);
-    }
-
-    function nextPage() {
-      if (pageNum >= pdfDoc.numPages) return;
-      pageNum++;
-      queueRenderPage(pageNum);
-    }
+    const updateZoom = () => {
+      pdfPagesWrapper.style.transform = `scale(${scale})`;
+    };
 
     function zoomIn() {
-      scale = Math.min(scale + 0.25, 5);
-      queueRenderPage(pageNum);
+      scale = Math.min(scale + 0.25, 4);
+      updateZoom();
     }
 
     function zoomOut() {
       scale = Math.max(scale - 0.25, 0.5);
-      queueRenderPage(pageNum);
+      updateZoom();
     }
 
     function rotate() {
       rotation = (rotation + 90) % 360;
-      queueRenderPage(pageNum);
+      renderAllPages(pdfDoc);
     }
 
     function toggleFullscreen() {
       const viewer = document.getElementById("viewerContainer");
       if (!document.fullscreenElement) {
-        viewer.requestFullscreen().catch(err => console.log(err));
+        viewer.requestFullscreen();
       } else {
         document.exitFullscreen();
       }
     }
 
-    loadingTask.promise.then(pdf => {
+    let pdfDoc = null;
+    pdfjsLib.getDocument({ data: new Uint8Array([...pdfData].map(c => c.charCodeAt(0))) }).promise.then(pdf => {
       pdfDoc = pdf;
-      document.getElementById('page_count').textContent = pdf.numPages;
-      renderPage(pageNum);
+      renderAllPages(pdfDoc);
     });
 
-    // Touch zoom and pan
-    let initialDistance = null;
-    let lastScale = 1;
-    let startX = 0, startY = 0;
-    let currentX = 0, currentY = 0;
-    const pdfCard = document.getElementById("pdfCard");
+    // Touch pinch zoom
+    let startDistance = null;
+    let startScale = 1;
 
-    pdfCard.addEventListener("touchstart", (e) => {
+    document.getElementById("viewerContainer").addEventListener("touchstart", function (e) {
       if (e.touches.length === 2) {
-        const dx = e.touches[1].clientX - e.touches[0].clientX;
-        const dy = e.touches[1].clientY - e.touches[0].clientY;
-        initialDistance = Math.sqrt(dx * dx + dy * dy);
-      } else if (e.touches.length === 1) {
-        startX = e.touches[0].clientX - currentX;
-        startY = e.touches[0].clientY - currentY;
-      }
-    });
-
-    pdfCard.addEventListener("touchmove", (e) => {
-      if (e.touches.length === 2 && initialDistance !== null) {
         e.preventDefault();
         const dx = e.touches[1].clientX - e.touches[0].clientX;
         const dy = e.touches[1].clientY - e.touches[0].clientY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const pinchScale = distance / initialDistance;
-
-        const newScale = Math.max(0.5, Math.min(scale * pinchScale, 5));
-        scale = newScale;
-        queueRenderPage(pageNum);
-      } else if (e.touches.length === 1) {
-        currentX = e.touches[0].clientX - startX;
-        currentY = e.touches[0].clientY - startY;
-        pdfCard.style.transform = `translate(${currentX}px, ${currentY}px)`;
+        startDistance = Math.hypot(dx, dy);
+        startScale = scale;
       }
     });
 
-    pdfCard.addEventListener("touchend", (e) => {
+    document.getElementById("viewerContainer").addEventListener("touchmove", function (e) {
+      if (e.touches.length === 2 && startDistance !== null) {
+        e.preventDefault();
+        const dx = e.touches[1].clientX - e.touches[0].clientX;
+        const dy = e.touches[1].clientY - e.touches[0].clientY;
+        const currentDistance = Math.hypot(dx, dy);
+        const scaleFactor = currentDistance / startDistance;
+        scale = Math.min(Math.max(startScale * scaleFactor, 0.5), 4);
+        updateZoom();
+      }
+    });
+
+    document.getElementById("viewerContainer").addEventListener("touchend", function (e) {
       if (e.touches.length < 2) {
-        initialDistance = null;
+        startDistance = null;
       }
     });
   </script>

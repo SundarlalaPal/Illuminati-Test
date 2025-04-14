@@ -47,11 +47,13 @@
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
       background: white;
       border-radius: 8px;
+      display: block;
+      transition: opacity 0.2s ease;
     }
 
     #pdfPagesWrapper {
       transform-origin: top left;
-      transition: transform 0.05s ease-out;
+      transition: transform 0.1s ease-out;
     }
   </style>
 </head>
@@ -75,15 +77,67 @@
     const pdfjsLib = window['pdfjs-dist/build/pdf'];
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.10.111/pdf.worker.min.js';
 
-    const pdfPagesWrapper = document.getElementById("pdfPagesWrapper");
     const viewerContainer = document.getElementById("viewerContainer");
+    const pdfPagesWrapper = document.getElementById("pdfPagesWrapper");
 
     let scale = 1;
     let rotation = 0;
     let pdfDoc = null;
 
+    function renderAllPages(pdf, highQuality = false) {
+      const canvases = pdfPagesWrapper.querySelectorAll("canvas");
+      canvases.forEach((oldCanvas, index) => {
+        const pageNum = index + 1;
+        pdf.getPage(pageNum).then(page => {
+          const viewport = page.getViewport({ scale, rotation });
+          const canvas = document.createElement("canvas");
+          canvas.classList.add("pdf-page");
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+
+          const ctx = canvas.getContext("2d");
+          const renderContext = {
+            canvasContext: ctx,
+            viewport
+          };
+
+          canvas.style.opacity = "0";
+          page.render(renderContext).promise.then(() => {
+            canvas.style.opacity = "1";
+            pdfPagesWrapper.replaceChild(canvas, oldCanvas);
+          });
+        });
+      });
+    }
+
+    function initialRender(pdf) {
+      pdfPagesWrapper.innerHTML = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        pdf.getPage(i).then(page => {
+          const viewport = page.getViewport({ scale, rotation });
+          const canvas = document.createElement("canvas");
+          canvas.classList.add("pdf-page");
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+
+          const ctx = canvas.getContext("2d");
+          const renderContext = {
+            canvasContext: ctx,
+            viewport
+          };
+
+          page.render(renderContext);
+          pdfPagesWrapper.appendChild(canvas);
+        });
+      }
+    }
+
     const updateZoom = () => {
+      // Instant visual zoom
       pdfPagesWrapper.style.transform = `scale(${scale})`;
+      // Delay re-render slightly
+      clearTimeout(window.reRenderTimeout);
+      window.reRenderTimeout = setTimeout(() => renderAllPages(pdfDoc), 300);
     };
 
     function zoomIn() {
@@ -98,49 +152,26 @@
 
     function rotate() {
       rotation = (rotation + 90) % 360;
-      renderAllPages(pdfDoc);
+      initialRender(pdfDoc);
     }
 
     function toggleFullscreen() {
       if (!document.fullscreenElement) {
-        viewerContainer.requestFullscreen().catch(console.error);
+        viewerContainer.requestFullscreen();
       } else {
         document.exitFullscreen();
       }
     }
 
-    function renderAllPages(pdf) {
-      pdfPagesWrapper.innerHTML = '';
-      for (let i = 1; i <= pdf.numPages; i++) {
-        pdf.getPage(i).then(page => {
-          const viewport = page.getViewport({ scale: 1, rotation });
-          const canvas = document.createElement("canvas");
-          canvas.classList.add("pdf-page");
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-
-          const context = canvas.getContext('2d');
-          const renderContext = {
-            canvasContext: context,
-            viewport: viewport
-          };
-
-          page.render(renderContext);
-          pdfPagesWrapper.appendChild(canvas);
-        });
-      }
-    }
-
     pdfjsLib.getDocument({ data: new Uint8Array([...pdfData].map(c => c.charCodeAt(0))) }).promise.then(pdf => {
       pdfDoc = pdf;
-      renderAllPages(pdf);
+      initialRender(pdf);
     });
 
-    // Pinch-to-zoom at gesture midpoint
+    // Pinch-zoom handling
     let startDistance = null;
     let startScale = 1;
-    let originX = 0;
-    let originY = 0;
+    let originX = 0, originY = 0;
 
     viewerContainer.addEventListener("touchstart", function (e) {
       if (e.touches.length === 2) {
@@ -150,7 +181,6 @@
         startDistance = Math.hypot(dx, dy);
         startScale = scale;
 
-        // Center of the pinch
         const rect = pdfPagesWrapper.getBoundingClientRect();
         const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
         const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;

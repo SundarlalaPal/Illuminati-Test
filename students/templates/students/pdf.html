@@ -2,15 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Full PDF Viewer</title>
+  <title>PDF Viewer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <style>
     html, body {
       margin: 0;
       padding: 0;
       height: 100%;
-      overflow: hidden;
       font-family: sans-serif;
+      overflow: hidden;
       background-color: #f5f5f5;
     }
 
@@ -39,6 +39,7 @@
       overflow: auto;
       padding: 20px;
       background: #ddd;
+      touch-action: none;
     }
 
     .pdf-page {
@@ -50,6 +51,7 @@
 
     #pdfPagesWrapper {
       transform-origin: top left;
+      transition: transform 0.05s ease-out;
     }
   </style>
 </head>
@@ -74,30 +76,11 @@
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.10.111/pdf.worker.min.js';
 
     const pdfPagesWrapper = document.getElementById("pdfPagesWrapper");
-    let scale = 1.25;
+    const viewerContainer = document.getElementById("viewerContainer");
+
+    let scale = 1;
     let rotation = 0;
-
-    const renderAllPages = (pdf) => {
-      pdfPagesWrapper.innerHTML = '';
-      for (let i = 1; i <= pdf.numPages; i++) {
-        pdf.getPage(i).then(page => {
-          const viewport = page.getViewport({ scale, rotation });
-          const canvas = document.createElement("canvas");
-          canvas.classList.add("pdf-page");
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-
-          const context = canvas.getContext('2d');
-          const renderContext = {
-            canvasContext: context,
-            viewport: viewport
-          };
-
-          page.render(renderContext);
-          pdfPagesWrapper.appendChild(canvas);
-        });
-      }
-    };
+    let pdfDoc = null;
 
     const updateZoom = () => {
       pdfPagesWrapper.style.transform = `scale(${scale})`;
@@ -119,35 +102,67 @@
     }
 
     function toggleFullscreen() {
-      const viewer = document.getElementById("viewerContainer");
       if (!document.fullscreenElement) {
-        viewer.requestFullscreen();
+        viewerContainer.requestFullscreen().catch(console.error);
       } else {
         document.exitFullscreen();
       }
     }
 
-    let pdfDoc = null;
+    function renderAllPages(pdf) {
+      pdfPagesWrapper.innerHTML = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        pdf.getPage(i).then(page => {
+          const viewport = page.getViewport({ scale: 1, rotation });
+          const canvas = document.createElement("canvas");
+          canvas.classList.add("pdf-page");
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+
+          const context = canvas.getContext('2d');
+          const renderContext = {
+            canvasContext: context,
+            viewport: viewport
+          };
+
+          page.render(renderContext);
+          pdfPagesWrapper.appendChild(canvas);
+        });
+      }
+    }
+
     pdfjsLib.getDocument({ data: new Uint8Array([...pdfData].map(c => c.charCodeAt(0))) }).promise.then(pdf => {
       pdfDoc = pdf;
-      renderAllPages(pdfDoc);
+      renderAllPages(pdf);
     });
 
-    // Touch pinch zoom
+    // Pinch-to-zoom at gesture midpoint
     let startDistance = null;
     let startScale = 1;
+    let originX = 0;
+    let originY = 0;
 
-    document.getElementById("viewerContainer").addEventListener("touchstart", function (e) {
+    viewerContainer.addEventListener("touchstart", function (e) {
       if (e.touches.length === 2) {
         e.preventDefault();
         const dx = e.touches[1].clientX - e.touches[0].clientX;
         const dy = e.touches[1].clientY - e.touches[0].clientY;
         startDistance = Math.hypot(dx, dy);
         startScale = scale;
+
+        // Center of the pinch
+        const rect = pdfPagesWrapper.getBoundingClientRect();
+        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+
+        originX = (midX / rect.width) * 100;
+        originY = (midY / rect.height) * 100;
+
+        pdfPagesWrapper.style.transformOrigin = `${originX}% ${originY}%`;
       }
     });
 
-    document.getElementById("viewerContainer").addEventListener("touchmove", function (e) {
+    viewerContainer.addEventListener("touchmove", function (e) {
       if (e.touches.length === 2 && startDistance !== null) {
         e.preventDefault();
         const dx = e.touches[1].clientX - e.touches[0].clientX;
@@ -159,7 +174,7 @@
       }
     });
 
-    document.getElementById("viewerContainer").addEventListener("touchend", function (e) {
+    viewerContainer.addEventListener("touchend", function (e) {
       if (e.touches.length < 2) {
         startDistance = null;
       }

@@ -2,58 +2,54 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Ultimate PDF Viewer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=10, user-scalable=no" />
+  <title>Touch Zoom PDF Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=10.0, user-scalable=no" />
   <style>
     html, body {
       margin: 0;
       padding: 0;
       height: 100%;
-      font-family: sans-serif;
       overflow: hidden;
+      font-family: sans-serif;
     }
 
     #toolbar {
-      background: #333;
-      color: #fff;
+      background: #222;
+      color: white;
       padding: 10px;
       display: flex;
       justify-content: center;
-      align-items: center;
+      flex-wrap: wrap;
     }
 
     #toolbar button {
       margin: 5px;
       padding: 8px 12px;
-      background: #555;
+      background: #444;
+      color: white;
       border: none;
       border-radius: 4px;
-      color: #fff;
       cursor: pointer;
     }
 
     #viewerContainer {
       height: calc(100vh - 60px);
       overflow: auto;
-      background: #ccc;
-      -webkit-overflow-scrolling: touch;
+      background: #eee;
+      position: relative;
       touch-action: none;
     }
 
-    #pinch-zoom-container {
-      touch-action: none;
-    }
-
-    #pdfPagesWrapper {
+    #pdfCanvasWrapper {
       transform-origin: center center;
+      transition: transform 0.1s ease;
     }
 
-    .pdf-page {
+    canvas {
       display: block;
       margin: 20px auto;
-      background: #fff;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-      border-radius: 6px;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
   </style>
 </head>
@@ -63,80 +59,113 @@
     <button onclick="zoomIn()">Zoom In</button>
     <button onclick="zoomOut()">Zoom Out</button>
     <button onclick="rotate()">Rotate</button>
-    <button onclick="toggleFullscreen()">Fullscreen</button>
   </div>
 
   <div id="viewerContainer">
-    <div id="pinch-zoom-container">
-      <div id="pdfPagesWrapper"></div>
+    <div id="pdfCanvasWrapper">
+      <canvas id="pdf-canvas"></canvas>
     </div>
   </div>
 
-  <!-- PDF.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.10.111/pdf.min.js"></script>
-  <!-- PinchZoom.js -->
-  <script src="https://cdn.jsdelivr.net/npm/pinchzoom@2.3.4/dist/pinchzoom.min.js"></script>
-
   <script>
     const base64PDF = `{{ pdf_content|safe }}`;
     const pdfData = atob(base64PDF);
     const pdfjsLib = window['pdfjs-dist/build/pdf'];
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.10.111/pdf.worker.min.js';
 
-    const pdfPagesWrapper = document.getElementById("pdfPagesWrapper");
-    const pinchZoomContainer = document.getElementById("pinch-zoom-container");
+    const viewer = document.getElementById('viewerContainer');
+    const canvasWrapper = document.getElementById('pdfCanvasWrapper');
+    const canvas = document.getElementById('pdf-canvas');
+    const ctx = canvas.getContext('2d');
 
+    let pdfDoc = null;
+    let currentPage = 1;
     let scale = 1;
     let rotation = 0;
-    let pdfDoc = null;
+    let lastCenter = { x: 0.5, y: 0.5 };
 
-    async function renderAllPages(pdf) {
-      pdfPagesWrapper.innerHTML = '';
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const viewport = page.getViewport({ scale, rotation });
-
-        const canvas = document.createElement("canvas");
-        canvas.classList.add("pdf-page");
+    function renderPage(num, targetScale = scale) {
+      pdfDoc.getPage(num).then(page => {
+        const viewport = page.getViewport({ scale: targetScale, rotation });
         canvas.width = viewport.width;
         canvas.height = viewport.height;
-
-        const ctx = canvas.getContext('2d');
-        await page.render({ canvasContext: ctx, viewport }).promise;
-
-        pdfPagesWrapper.appendChild(canvas);
-      }
+        const renderContext = {
+          canvasContext: ctx,
+          viewport: viewport
+        };
+        page.render(renderContext);
+      });
     }
 
     function zoomIn() {
-      scale = Math.min(scale + 0.25, 5);
-      renderAllPages(pdfDoc);
+      scale = Math.min(scale + 0.25, 4);
+      renderPage(currentPage);
     }
 
     function zoomOut() {
       scale = Math.max(scale - 0.25, 0.5);
-      renderAllPages(pdfDoc);
+      renderPage(currentPage);
     }
 
     function rotate() {
       rotation = (rotation + 90) % 360;
-      renderAllPages(pdfDoc);
+      renderPage(currentPage);
     }
 
-    function toggleFullscreen() {
-      const container = document.getElementById("viewerContainer");
-      if (!document.fullscreenElement) {
-        container.requestFullscreen().catch(console.error);
-      } else {
-        document.exitFullscreen();
-      }
-    }
-
+    // Load PDF
     pdfjsLib.getDocument({ data: new Uint8Array([...pdfData].map(c => c.charCodeAt(0))) }).promise.then(pdf => {
       pdfDoc = pdf;
-      renderAllPages(pdf);
-      new PinchZoom(pinchZoomContainer, { tapZoomFactor: 1, animationDuration: 100, maxZoom: 4 });
+      renderPage(currentPage);
     });
+
+    // Pinch-to-zoom
+    let startDistance = null;
+    let startScale = 1;
+
+    viewer.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        startDistance = getDistance(e.touches);
+        startScale = scale;
+        const rect = viewer.getBoundingClientRect();
+        const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left + viewer.scrollLeft;
+        const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top + viewer.scrollTop;
+        lastCenter = {
+          x: centerX / canvas.offsetWidth,
+          y: centerY / canvas.offsetHeight
+        };
+      }
+    });
+
+    viewer.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2 && startDistance) {
+        e.preventDefault();
+        const newDistance = getDistance(e.touches);
+        const scaleFactor = newDistance / startDistance;
+        const newScale = Math.min(Math.max(startScale * scaleFactor, 0.5), 4);
+        canvasWrapper.style.transform = `scale(${newScale})`;
+      }
+    });
+
+    viewer.addEventListener('touchend', () => {
+      if (startDistance) {
+        const match = canvasWrapper.style.transform.match(/scale([^)]+)/);
+        if (match) {
+          scale = parseFloat(match[1]);
+        }
+        canvasWrapper.style.transform = 'scale(1)';
+        viewer.scrollLeft = canvas.offsetWidth * lastCenter.x * scale - viewer.clientWidth / 2;
+        viewer.scrollTop = canvas.offsetHeight * lastCenter.y * scale - viewer.clientHeight / 2;
+        renderPage(currentPage);
+      }
+      startDistance = null;
+    });
+
+    function getDistance(touches) {
+      const dx = touches[1].clientX - touches[0].clientX;
+      const dy = touches[1].clientY - touches[0].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
   </script>
 </body>
 </html>

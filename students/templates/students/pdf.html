@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>PDF Viewer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=10.0, user-scalable=no">
+  <meta charset="UTF-8" />
+  <title>Ultimate PDF Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=10, user-scalable=no" />
   <style>
     html, body {
       margin: 0;
@@ -15,12 +15,11 @@
 
     #toolbar {
       background: #333;
-      color: white;
+      color: #fff;
       padding: 10px;
       display: flex;
       justify-content: center;
       align-items: center;
-      flex-wrap: wrap;
     }
 
     #toolbar button {
@@ -29,7 +28,7 @@
       background: #555;
       border: none;
       border-radius: 4px;
-      color: white;
+      color: #fff;
       cursor: pointer;
     }
 
@@ -38,20 +37,23 @@
       overflow: auto;
       background: #ccc;
       -webkit-overflow-scrolling: touch;
-      position: relative;
+      touch-action: none;
+    }
+
+    #pinch-zoom-container {
+      touch-action: none;
     }
 
     #pdfPagesWrapper {
-      transform-origin: top left;
-      transition: transform 0.05s ease;
+      transform-origin: center center;
     }
 
     .pdf-page {
       display: block;
-      margin: 10px auto;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      margin: 20px auto;
       background: #fff;
-      border-radius: 4px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
     }
   </style>
 </head>
@@ -65,10 +67,16 @@
   </div>
 
   <div id="viewerContainer">
-    <div id="pdfPagesWrapper"></div>
+    <div id="pinch-zoom-container">
+      <div id="pdfPagesWrapper"></div>
+    </div>
   </div>
 
+  <!-- PDF.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.10.111/pdf.min.js"></script>
+  <!-- PinchZoom.js -->
+  <script src="https://cdn.jsdelivr.net/npm/pinchzoom@2.3.4/dist/pinchzoom.min.js"></script>
+
   <script>
     const base64PDF = `{{ pdf_content|safe }}`;
     const pdfData = atob(base64PDF);
@@ -76,57 +84,28 @@
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.10.111/pdf.worker.min.js';
 
     const pdfPagesWrapper = document.getElementById("pdfPagesWrapper");
-    const viewerContainer = document.getElementById("viewerContainer");
+    const pinchZoomContainer = document.getElementById("pinch-zoom-container");
 
     let scale = 1;
     let rotation = 0;
     let pdfDoc = null;
 
-    function renderAllPages(pdf, preserveScroll = false, scrollFocus = { x: 0.5, y: 0.5 }) {
-      // Store scroll position if needed
-      const scrollX = viewerContainer.scrollLeft;
-      const scrollY = viewerContainer.scrollTop;
-      const containerWidth = viewerContainer.clientWidth;
-      const containerHeight = viewerContainer.clientHeight;
-
+    async function renderAllPages(pdf) {
       pdfPagesWrapper.innerHTML = '';
-      const canvasRefs = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale, rotation });
 
-      const renderPage = (pageNum) => {
-        return pdf.getPage(pageNum).then(page => {
-          const viewport = page.getViewport({ scale, rotation });
-          const canvas = document.createElement("canvas");
-          canvas.classList.add("pdf-page");
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
+        const canvas = document.createElement("canvas");
+        canvas.classList.add("pdf-page");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
 
-          const context = canvas.getContext('2d');
-          const renderContext = {
-            canvasContext: context,
-            viewport: viewport
-          };
+        const ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport }).promise;
 
-          return page.render(renderContext).promise.then(() => {
-            pdfPagesWrapper.appendChild(canvas);
-            canvasRefs.push(canvas);
-          });
-        });
-      };
-
-      const renderAll = async () => {
-        for (let i = 1; i <= pdf.numPages; i++) {
-          await renderPage(i);
-        }
-
-        if (preserveScroll) {
-          const newScrollX = pdfPagesWrapper.scrollWidth * scrollFocus.x - containerWidth / 2;
-          const newScrollY = pdfPagesWrapper.scrollHeight * scrollFocus.y - containerHeight / 2;
-          viewerContainer.scrollLeft = newScrollX;
-          viewerContainer.scrollTop = newScrollY;
-        }
-      };
-
-      renderAll();
+        pdfPagesWrapper.appendChild(canvas);
+      }
     }
 
     function zoomIn() {
@@ -145,8 +124,9 @@
     }
 
     function toggleFullscreen() {
+      const container = document.getElementById("viewerContainer");
       if (!document.fullscreenElement) {
-        viewerContainer.requestFullscreen().catch(console.error);
+        container.requestFullscreen().catch(console.error);
       } else {
         document.exitFullscreen();
       }
@@ -155,56 +135,7 @@
     pdfjsLib.getDocument({ data: new Uint8Array([...pdfData].map(c => c.charCodeAt(0))) }).promise.then(pdf => {
       pdfDoc = pdf;
       renderAllPages(pdf);
-    });
-
-    // Pinch Zoom
-    let startDistance = null;
-    let startScale = 1;
-    let originX = 0.5;
-    let originY = 0.5;
-    let pinchTimeout;
-
-    viewerContainer.addEventListener("touchstart", function (e) {
-      if (e.touches.length === 2) {
-        const dx = e.touches[1].clientX - e.touches[0].clientX;
-        const dy = e.touches[1].clientY - e.touches[0].clientY;
-        startDistance = Math.hypot(dx, dy);
-        startScale = scale;
-
-        const rect = pdfPagesWrapper.getBoundingClientRect();
-        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
-        const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
-
-        originX = midX / rect.width;
-        originY = midY / rect.height;
-
-        pdfPagesWrapper.style.transformOrigin = `${originX * 100}% ${originY * 100}%`;
-      }
-    });
-
-    viewerContainer.addEventListener("touchmove", function (e) {
-      if (e.touches.length === 2 && startDistance !== null) {
-        e.preventDefault();
-        const dx = e.touches[1].clientX - e.touches[0].clientX;
-        const dy = e.touches[1].clientY - e.touches[0].clientY;
-        const currentDistance = Math.hypot(dx, dy);
-        const scaleFactor = currentDistance / startDistance;
-        scale = Math.min(Math.max(startScale * scaleFactor, 0.5), 5);
-
-        pdfPagesWrapper.style.transform = `scale(${scale})`;
-
-        clearTimeout(pinchTimeout);
-        pinchTimeout = setTimeout(() => {
-          pdfPagesWrapper.style.transform = 'none';
-          renderAllPages(pdfDoc, true, { x: originX, y: originY });
-        }, 250);
-      }
-    });
-
-    viewerContainer.addEventListener("touchend", function (e) {
-      if (e.touches.length < 2) {
-        startDistance = null;
-      }
+      new PinchZoom(pinchZoomContainer, { tapZoomFactor: 1, animationDuration: 100, maxZoom: 4 });
     });
   </script>
 </body>

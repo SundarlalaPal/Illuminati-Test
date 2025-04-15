@@ -15,7 +15,7 @@
 
     #toolbar {
       background: #333;
-      color: #fff;
+      color: white;
       padding: 10px;
       display: flex;
       justify-content: center;
@@ -82,10 +82,18 @@
     let rotation = 0;
     let pdfDoc = null;
 
-    function renderAllPages(pdf) {
+    function renderAllPages(pdf, preserveScroll = false, scrollFocus = { x: 0.5, y: 0.5 }) {
+      // Store scroll position if needed
+      const scrollX = viewerContainer.scrollLeft;
+      const scrollY = viewerContainer.scrollTop;
+      const containerWidth = viewerContainer.clientWidth;
+      const containerHeight = viewerContainer.clientHeight;
+
       pdfPagesWrapper.innerHTML = '';
-      for (let i = 1; i <= pdf.numPages; i++) {
-        pdf.getPage(i).then(page => {
+      const canvasRefs = [];
+
+      const renderPage = (pageNum) => {
+        return pdf.getPage(pageNum).then(page => {
           const viewport = page.getViewport({ scale, rotation });
           const canvas = document.createElement("canvas");
           canvas.classList.add("pdf-page");
@@ -98,10 +106,27 @@
             viewport: viewport
           };
 
-          page.render(renderContext);
-          pdfPagesWrapper.appendChild(canvas);
+          return page.render(renderContext).promise.then(() => {
+            pdfPagesWrapper.appendChild(canvas);
+            canvasRefs.push(canvas);
+          });
         });
-      }
+      };
+
+      const renderAll = async () => {
+        for (let i = 1; i <= pdf.numPages; i++) {
+          await renderPage(i);
+        }
+
+        if (preserveScroll) {
+          const newScrollX = pdfPagesWrapper.scrollWidth * scrollFocus.x - containerWidth / 2;
+          const newScrollY = pdfPagesWrapper.scrollHeight * scrollFocus.y - containerHeight / 2;
+          viewerContainer.scrollLeft = newScrollX;
+          viewerContainer.scrollTop = newScrollY;
+        }
+      };
+
+      renderAll();
     }
 
     function zoomIn() {
@@ -132,11 +157,11 @@
       renderAllPages(pdf);
     });
 
-    // Pinch-to-zoom logic
+    // Pinch Zoom
     let startDistance = null;
     let startScale = 1;
-    let originX = 0;
-    let originY = 0;
+    let originX = 0.5;
+    let originY = 0.5;
     let pinchTimeout;
 
     viewerContainer.addEventListener("touchstart", function (e) {
@@ -150,10 +175,10 @@
         const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
         const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
 
-        originX = (midX / rect.width) * 100;
-        originY = (midY / rect.height) * 100;
+        originX = midX / rect.width;
+        originY = midY / rect.height;
 
-        pdfPagesWrapper.style.transformOrigin = `${originX}% ${originY}%`;
+        pdfPagesWrapper.style.transformOrigin = `${originX * 100}% ${originY * 100}%`;
       }
     });
 
@@ -171,7 +196,7 @@
         clearTimeout(pinchTimeout);
         pinchTimeout = setTimeout(() => {
           pdfPagesWrapper.style.transform = 'none';
-          renderAllPages(pdfDoc);
+          renderAllPages(pdfDoc, true, { x: originX, y: originY });
         }, 250);
       }
     });

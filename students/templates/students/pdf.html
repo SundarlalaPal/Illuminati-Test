@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>PDF Viewer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=10.0, user-scalable=no">
   <style>
     html, body {
       margin: 0;
@@ -11,25 +11,24 @@
       height: 100%;
       font-family: sans-serif;
       overflow: hidden;
-      background-color: #f5f5f5;
     }
 
     #toolbar {
-      background: #222;
-      color: white;
+      background: #333;
+      color: #fff;
       padding: 10px;
       display: flex;
-      flex-wrap: wrap;
       justify-content: center;
       align-items: center;
+      flex-wrap: wrap;
     }
 
     #toolbar button {
       margin: 5px;
       padding: 8px 12px;
-      background-color: #444;
+      background: #555;
       border: none;
-      border-radius: 5px;
+      border-radius: 4px;
       color: white;
       cursor: pointer;
     }
@@ -37,23 +36,22 @@
     #viewerContainer {
       height: calc(100vh - 60px);
       overflow: auto;
-      padding: 20px;
-      background: #ddd;
-      touch-action: none;
-    }
-
-    .pdf-page {
-      margin: 10px auto;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-      background: white;
-      border-radius: 8px;
-      display: block;
-      transition: opacity 0.2s ease;
+      background: #ccc;
+      -webkit-overflow-scrolling: touch;
+      position: relative;
     }
 
     #pdfPagesWrapper {
       transform-origin: top left;
-      transition: transform 0.1s ease-out;
+      transition: transform 0.05s ease;
+    }
+
+    .pdf-page {
+      display: block;
+      margin: 10px auto;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      background: #fff;
+      border-radius: 4px;
     }
   </style>
 </head>
@@ -77,40 +75,14 @@
     const pdfjsLib = window['pdfjs-dist/build/pdf'];
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.10.111/pdf.worker.min.js';
 
-    const viewerContainer = document.getElementById("viewerContainer");
     const pdfPagesWrapper = document.getElementById("pdfPagesWrapper");
+    const viewerContainer = document.getElementById("viewerContainer");
 
     let scale = 1;
     let rotation = 0;
     let pdfDoc = null;
 
-    function renderAllPages(pdf, highQuality = false) {
-      const canvases = pdfPagesWrapper.querySelectorAll("canvas");
-      canvases.forEach((oldCanvas, index) => {
-        const pageNum = index + 1;
-        pdf.getPage(pageNum).then(page => {
-          const viewport = page.getViewport({ scale, rotation });
-          const canvas = document.createElement("canvas");
-          canvas.classList.add("pdf-page");
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-
-          const ctx = canvas.getContext("2d");
-          const renderContext = {
-            canvasContext: ctx,
-            viewport
-          };
-
-          canvas.style.opacity = "0";
-          page.render(renderContext).promise.then(() => {
-            canvas.style.opacity = "1";
-            pdfPagesWrapper.replaceChild(canvas, oldCanvas);
-          });
-        });
-      });
-    }
-
-    function initialRender(pdf) {
+    function renderAllPages(pdf) {
       pdfPagesWrapper.innerHTML = '';
       for (let i = 1; i <= pdf.numPages; i++) {
         pdf.getPage(i).then(page => {
@@ -120,10 +92,10 @@
           canvas.width = viewport.width;
           canvas.height = viewport.height;
 
-          const ctx = canvas.getContext("2d");
+          const context = canvas.getContext('2d');
           const renderContext = {
-            canvasContext: ctx,
-            viewport
+            canvasContext: context,
+            viewport: viewport
           };
 
           page.render(renderContext);
@@ -132,32 +104,24 @@
       }
     }
 
-    const updateZoom = () => {
-      // Instant visual zoom
-      pdfPagesWrapper.style.transform = `scale(${scale})`;
-      // Delay re-render slightly
-      clearTimeout(window.reRenderTimeout);
-      window.reRenderTimeout = setTimeout(() => renderAllPages(pdfDoc), 300);
-    };
-
     function zoomIn() {
-      scale = Math.min(scale + 0.25, 4);
-      updateZoom();
+      scale = Math.min(scale + 0.25, 5);
+      renderAllPages(pdfDoc);
     }
 
     function zoomOut() {
       scale = Math.max(scale - 0.25, 0.5);
-      updateZoom();
+      renderAllPages(pdfDoc);
     }
 
     function rotate() {
       rotation = (rotation + 90) % 360;
-      initialRender(pdfDoc);
+      renderAllPages(pdfDoc);
     }
 
     function toggleFullscreen() {
       if (!document.fullscreenElement) {
-        viewerContainer.requestFullscreen();
+        viewerContainer.requestFullscreen().catch(console.error);
       } else {
         document.exitFullscreen();
       }
@@ -165,17 +129,18 @@
 
     pdfjsLib.getDocument({ data: new Uint8Array([...pdfData].map(c => c.charCodeAt(0))) }).promise.then(pdf => {
       pdfDoc = pdf;
-      initialRender(pdf);
+      renderAllPages(pdf);
     });
 
-    // Pinch-zoom handling
+    // Pinch-to-zoom logic
     let startDistance = null;
     let startScale = 1;
-    let originX = 0, originY = 0;
+    let originX = 0;
+    let originY = 0;
+    let pinchTimeout;
 
     viewerContainer.addEventListener("touchstart", function (e) {
       if (e.touches.length === 2) {
-        e.preventDefault();
         const dx = e.touches[1].clientX - e.touches[0].clientX;
         const dy = e.touches[1].clientY - e.touches[0].clientY;
         startDistance = Math.hypot(dx, dy);
@@ -199,8 +164,15 @@
         const dy = e.touches[1].clientY - e.touches[0].clientY;
         const currentDistance = Math.hypot(dx, dy);
         const scaleFactor = currentDistance / startDistance;
-        scale = Math.min(Math.max(startScale * scaleFactor, 0.5), 4);
-        updateZoom();
+        scale = Math.min(Math.max(startScale * scaleFactor, 0.5), 5);
+
+        pdfPagesWrapper.style.transform = `scale(${scale})`;
+
+        clearTimeout(pinchTimeout);
+        pinchTimeout = setTimeout(() => {
+          pdfPagesWrapper.style.transform = 'none';
+          renderAllPages(pdfDoc);
+        }, 250);
       }
     });
 
